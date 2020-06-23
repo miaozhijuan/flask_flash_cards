@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block body %}
-
+<script src="{{ url_for('static', filename='ckeditor/ckeditor.js')}}"></script>
     <div class="row">
         <div class="col-xs-12 text-center">
             <div class="btn-group btn-group-lg" role="group" aria-label="card type">
@@ -43,7 +43,7 @@
             <div class="panel panel-primary cardBack">
                 <div class="panel-body">
                     <div class="alignContainer">
-                        <div class="alignMiddle frontText">
+                        <div id="back_card_img" class="alignMiddle frontText">
                             {% if card.type == 1 %}
                                 {% if short_answer %}
                                     <div class="text-center largerText">
@@ -124,11 +124,11 @@
             </div>
             <div class="form-group">
                 <label for="back">抽认卡背面</label>
-                <textarea name="back"
+                <div id="edit_img"><textarea name="back"
                           class="form-control"
                           id="back"
                           placeholder="back of card"
-                          rows="12">{{ card.back|e }}</textarea>
+                          rows="12">{{ card.back|e }}</textarea></div>
             </div>
             <div class="row">
                 <div class="col-xs-6">
@@ -150,11 +150,12 @@
             <hr />
             <div class="form-group">
                 <input id="card_id" type="hidden" name="card_id" value="{{ card.id|e }}" />
+                <input id="card_img_save" type="hidden" name="img" value="" />
                 <button type="button" class="saveButton btn btn-lg btn-primary" onclick="edit_save_card()">保存该抽认卡</button>
             </div>
         </form>
     </div>
-
+    
     <div id="add_card" class="well editPanel" style="display: none;">
         <h2>添加抽认卡</h2>
         <form id="add_form" action="{{ url_for('add_card') }}" method="post" class="cardForm">
@@ -176,15 +177,54 @@
                           class="form-control"
                           id="back"
                           placeholder="back of card"
-                          rows="12"></textarea>
+                          rows="12">
+                        </textarea>
+                        <div id="preview" name=''></div>
+                        <input id="img" name="img" type="hidden"/>
+                          <p id="log"></p>
             </div>
             <div class="form-group">
                 <button type="button" onclick="add_form()" class="saveButton btn btn-lg btn-primary">保存</button>
             </div>
         </form>
     </div>
+    
 
     <script>
+        document.addEventListener('paste', function (event) {
+            var items = (event.clipboardData || window.clipboardData).items;
+            var file = null;
+            if (items && items.length) {
+                // 搜索剪切板items
+                for (var i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        file = items[i].getAsFile();
+                        break;
+                    }
+                }
+            } else {
+                log.innerHTML = '<span style="color:red;">当前浏览器不支持</span>';
+                return;
+            }
+            if (!file) {
+                log.innerHTML = '<span style="color:red;">粘贴内容非图片</span>';
+                return;
+            }
+            // 此时file就是我们的剪切板中的图片对象
+            // 如果需要预览，可以执行下面代码
+            $('#add_card #back').toggle()
+            var reader = new FileReader()
+            reader.onload = function(event) {
+                console.log(event.target.result)
+                preview.innerHTML = '<img src="' + event.target.result + '" class="upload-image">';
+                edit_img.innerHTML = '<img src="' + event.target.result + '" class="upload-image">';
+                back_card_img.innerHTML = '<img src="' + event.target.result + '" class="upload-image">';
+                $('#card_img_save').val(event.target.result)
+            }
+
+            reader.readAsDataURL(file);
+            // 如果不需要预览，上面这段可以忽略
+        });
         $(".alert-success").toggle()
         function edit_card(){
          $("#edit_card").toggle()
@@ -219,7 +259,7 @@
          
         }
         function edit_save_card(){
-
+            $('#card_img_save').val($('#edit_img img')[0].src)
             ajaxForm()
             $("#edit_card").toggle()
 
@@ -312,15 +352,25 @@
                 if(data.card.id==string_code.match(regexp2)[0]){
                     next_card()
                 }else{
-                    console.log(data)
-                    $('h3.text-center').html(data.card.front)
-                    $('#edit_card input.form-control ').val(data.card.front)
-                    $('#edit_card textarea.form-control').val(data.card.back)
-                    $("div pre code").html(data.card.back)
-                    $("#edit_card h2").html("编辑抽认卡 #"+data.card.id)
-                    $(".largerText").html(data.card.back) // todo 暂时解决
-                    $(".cardBack .frontText").html(data.card.back) // todo 暂时解决
-                    $('#card_id').val(data.card.id)
+                    console.log(data.card.img)
+                    if(data.card.img!=null){
+                        $('h3.text-center').html(data.card.front)
+                        $('#edit_card input.form-control ').val(data.card.front)
+                        $("#edit_card h2").html("编辑抽认卡 #"+data.card.id)
+                        $('#card_id').val(data.card.id)
+                        card_img = '<img src="' + data.card.img + '" class="upload-image">'
+                        back_card_img.innerHTML = card_img
+                        edit_img.innerHTML = card_img
+                    }else{
+                        $('h3.text-center').html(data.card.front)
+                        $('#edit_card input.form-control ').val(data.card.front)
+                        $('#edit_card textarea.form-control').val(data.card.back)
+                        $("div pre code").html(data.card.back)
+                        $("#edit_card h2").html("编辑抽认卡 #"+data.card.id)
+                        $(".largerText").html(data.card.back) // todo 暂时解决
+                        $(".cardBack .frontText").html(data.card.back) // todo 暂时解决
+                        $('#card_id').val(data.card.id)
+                    }
                 }
                
             },

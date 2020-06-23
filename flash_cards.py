@@ -132,12 +132,22 @@ def ajax_add_card():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     db = get_db()
-    db.execute('INSERT INTO cards (type, front, back) VALUES (?, ?, ?)',
-               [request.form['type'],
-                request.form['front'],
-                request.form['back']
-                ])
-    db.commit()
+    if(request.form['img']!=''):
+        db.execute('INSERT INTO cards (type, front, back,img) VALUES (?, ?, ?,?)',
+                [request.form['type'],
+                    request.form['front'],
+                    request.form['back'],
+                    request.form['img']
+                    ])
+        db.commit()
+    else:
+        db.execute('INSERT INTO cards (type, front, back) VALUES (?, ?, ?)',
+                [request.form['type'],
+                    request.form['front'],
+                    request.form['back']
+                    ])
+        db.commit()
+
     return json.dumps(request.form.to_dict());
 
 
@@ -160,30 +170,54 @@ def edit(card_id):
 def edit_card():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    selected = request.form.getlist('known')
+    selected = request.form.getlist('known') 
     known = bool(selected)
     db = get_db()
-    command = '''
-        UPDATE cards
-        SET
-          type = ?,
-          front = ?,
-          back = ?,
-          known = ?
-        WHERE id = ?
-    '''
-    db.execute(command,
-               [request.form['type'],
-                request.form['front'],
-                request.form['back'],
-                known,
-                request.form['card_id']
-                ])
-    db.commit()
+    if (request.form['img']!=''):
+        command = '''
+            UPDATE cards
+            SET
+            type = ?,
+            front = ?,
+            back = ?,
+            known = ?,
+            img = ?
+            WHERE id = ?
+        '''
+        db.execute(command,
+                [request.form['type'],
+                    request.form['front'],
+                    'back',
+                    known,
+                    request.form['img'],
+                    request.form['card_id']
+                    ])
+        db.commit()
+    else:
+        command = '''
+            UPDATE cards
+            SET
+            type = ?,
+            front = ?,
+            back = ?,
+            known = ?
+            WHERE id = ?
+        '''
+        db.execute(command,
+                [request.form['type'],
+                    request.form['front'],
+                    request.form['back'],
+                    known,
+                    request.form['card_id']
+                    ])
+        db.commit()
     # flash('抽认卡保存成功.')
     # message = {'msg':'抽认卡保存成功.'}
     
-    return json.dumps(request.form.to_dict())
+    message = {
+        'msg':'抽认卡删除成功！'
+    }
+    return json.dumps(message)
 
 
 @app.route('/delete/<card_id>')
@@ -202,7 +236,7 @@ def ajax_delete():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     db = get_db()
-    db.execute('DELETE FROM cards WHERE id = ?', [request.get_json()['card_id']])
+    db.execute('DELETE FROM cards WHERE id = ?', [request.get_json()['card_id']]) 
     db.commit()
     # flash('抽认卡删除成功.')
     message = {
@@ -287,6 +321,7 @@ def json_memorize(card_type, card_id):
     d_row['front'] = card['front']
     d_row['back'] = card['back']
     d_row['known'] = card['known']
+    d_row['img'] = card['img']
 
     card_json = {
         'card':d_row,
@@ -301,7 +336,7 @@ def get_card(type):
 
     query = '''
       SELECT
-        id, type, front, back, known
+        id, type, front, back, known, img
       FROM cards
       WHERE
         type = ?
