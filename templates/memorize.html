@@ -1,0 +1,376 @@
+{% extends "layout.html" %}
+{% block body %}
+
+    <div class="row">
+        <div class="col-xs-12 text-center">
+            <div class="btn-group btn-group-lg" role="group" aria-label="card type">
+                <a href="{{ url_for('general') }}" class="btn btn-{{ "primary" if card_type == "json_general" else "default" }}">日常问题</a>
+                <a href="{{ url_for('code') }}" class="btn btn-{{ "primary" if card_type == "json_code" else "default" }}">代码片段</a>
+            </div>
+        </div>
+    </div>
+
+    <hr/>
+   
+    <div class="row memorizePanel">
+        <!--
+        <div class="col-xs-2">
+            <div class="alignContainer">
+                <div class="alignMiddle text-right">
+                    <br/>
+                    <br/>
+                    <a href="wewetw"><i class="fa fa-chevron-left fa-5x"></i></a>
+                </div>
+            </div>
+        </div>
+        -->
+        <div class="alert alert-success" >
+            <a href="#" class="alert-link">操作成功</a>
+        </div>
+        <div class="col-xs-8 col-xs-offset-2">
+            <div class="panel panel-default cardFront">
+                <div class="panel-body">
+                    <div class="alignContainer">
+                        <div class="alignMiddle frontText">
+                            <a  class="btn  btn-link" href="javascript:void(0);" onclick="edit_card()">编辑抽认卡</a>
+                            <a id="link_add_card"  class="btn  btn-link" href="javascript:void(0);" onclick="add_card()">添加抽认卡</a>
+                            <a id="link_delete_card"  class="btn  btn-link" href="javascript:void(0);" onclick="delete_card()">删除该抽认卡</a>
+                            <h3 class="text-center">{{ card.front }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel panel-primary cardBack">
+                <div class="panel-body">
+                    <div class="alignContainer">
+                        <div class="alignMiddle frontText">
+                            {% if card.type == 1 %}
+                                {% if short_answer %}
+                                    <div class="text-center largerText">
+                                {% endif %}
+                                    {{ card.back|replace("\n", "<br />")|safe }}
+                                {% if short_answer %}
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <pre><code>{{ card.back|escape }}</code></pre>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--
+        <div class="col-xs-2">
+            <div class="alignContainer">
+                <div class="alignMiddle text-left">
+                    <br/>
+                    <br/>
+                    <a href="ergergerge"><i class="fa fa-chevron-right fa-5x"></i></a>
+                </div>
+            </div>
+        </div>
+        -->
+    </div>
+
+    <div class="row">
+        <div class="col-xs-12 text-center">
+            <a href="javascript:" class="btn btn-primary btn-lg flipCard">
+                <i class="fa fa-exchange"></i>
+                看背面
+            </a>
+            &nbsp;
+            &nbsp;
+            <a  class="btn btn-success btn-lg" onclick="mark_know()">
+                <i class="fa fa-check"></i>
+                认识这张卡片
+            </a>
+            &nbsp;
+            &nbsp;
+            <a href="javascript:0;" class="btn btn-primary btn-lg" onclick="next_card()">
+                下一张卡片
+                <i class="fa fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-xs-12 text-center">
+            <br />
+            <br />
+            <br />
+            <a href="{{ url_for(card_type, card_id=card.id) }}" class="btn btn-default btn-sm">
+                <i class="fa fa-bookmark"></i>
+                标记这张抽认卡 (#{{ card.id }})
+            </a>
+
+        </div>
+    </div>
+    <div id='edit_card' class="well" style="display: none;">
+        <h2>编辑抽认卡 #{{ card.id }}</h2>
+        <form id="edit_form" method="post" class="cardForm">
+
+            <div class="form-group">
+                <label for="general" class="btn btn-default btn-lg">日常问题 &nbsp;
+                    <input type="radio" name="type" value="1"
+                           id="general" {{ "checked" if (card.type == 1) else "" }} />
+                </label>
+                <label for="code" class="btn btn-default btn-lg">代码片段 &nbsp;
+                    <input type="radio" name="type" value="2" id="code" {{ "checked" if (card.type == 2) else "" }} />
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="front">抽认卡正面</label>
+                <input type="text" name="front" id="front" class="form-control" value="{{ card.front|e }}">
+            </div>
+            <div class="form-group">
+                <label for="back">抽认卡背面</label>
+                <textarea name="back"
+                          class="form-control"
+                          id="back"
+                          placeholder="back of card"
+                          rows="12">{{ card.back|e }}</textarea>
+            </div>
+            <div class="row">
+                <div class="col-xs-6">
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" name="known"
+                               value="1" {{ "checked" if (card.known == 1) else "" }} /> Known
+                        </label>
+                    </div>
+                </div>
+                <div class="col-xs-6 text-right" onclick="delete_card()">
+                    <a  class="btn btn-danger btn-xs">
+                        <i class="fa fa-trash"></i>
+                        永久移除该抽认卡
+                    </a>
+                </div>
+            </div>
+
+            <hr />
+            <div class="form-group">
+                <input id="card_id" type="hidden" name="card_id" value="{{ card.id|e }}" />
+                <button type="button" class="saveButton btn btn-lg btn-primary" onclick="edit_save_card()">保存该抽认卡</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="add_card" class="well editPanel" style="display: none;">
+        <h2>添加抽认卡</h2>
+        <form id="add_form" action="{{ url_for('add_card') }}" method="post" class="cardForm">
+            <div class="form-group">
+                <label for="general" class="toggleButton btn btn-default btn-lg">日常问题 &nbsp;
+                    <input type="radio" name="type" value="1" id="general"/>
+                </label>
+                <label for="code" class="toggleButton btn btn-default btn-lg">代码片段 &nbsp;
+                    <input type="radio" name="type" value="2" id="code"/>
+                </label>
+            </div>
+            <div class="form-group fieldFront">
+                <label for="front">抽认卡正面</label>
+                <input type="text" name="front" id="front" class="form-control">
+            </div>
+            <div class="form-group fieldBack">
+                <label for="back">抽认卡背面</label>
+                <textarea name="back"
+                          class="form-control"
+                          id="back"
+                          placeholder="back of card"
+                          rows="12"></textarea>
+            </div>
+            <div class="form-group">
+                <button type="button" onclick="add_form()" class="saveButton btn btn-lg btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        $(".alert-success").toggle()
+        function edit_card(){
+         $("#edit_card").toggle()
+         
+        }
+        /**抽认卡ajax删除*/
+        function delete_card(){
+            var string_code = $("div h2").html()
+                // 正则匹配 如果是相同的id号则重复检索
+            var regexp2 = /[0-9]+/g 
+            var card_id =string_code.match(regexp2)[0]
+
+            $.ajax({
+                url:"{{ url_for('ajax_delete')}}",
+                type:"POST",
+                data:JSON.stringify({'card_id':card_id}),
+                dataType: 'json',
+                processData:false,
+                contentType:"application/json",
+                success:function(data){
+                        next_card()
+                },
+                error:function(e){
+                        alert("error,请联系管理员");
+                }
+            })
+
+        }
+        function add_card(){
+        
+         $("#add_card").toggle()
+         
+        }
+        function edit_save_card(){
+
+            ajaxForm()
+            $("#edit_card").toggle()
+
+        }
+        /**修改保存抽认卡**/
+        function ajaxForm(){
+            var form= new FormData(document.querySelector("#edit_form"));
+            console.log(form.toString());
+            $.ajax({
+                url:"{{ url_for('edit_card') }}",
+                type:"post",
+                data:form,
+                dataType: 'json',
+                processData:false,
+                contentType:false,
+                success:function(data){
+                        
+                        $('h3.text-center').html($('#edit_card input.form-control').val())
+                        $('div pre code').html($('#edit_card textarea.form-control').val())
+                        $(' .largerText').html($('#edit_card textarea.form-control').val())
+                        $('.cardBack .frontText').html($('#edit_card textarea.form-control').val())
+                        $(".alert-success").toggle()
+                        
+                        setTimeout(
+                            function(){
+                                $(".alert-success").toggle()
+                            },2000
+                        );
+                        
+                },
+                error:function(e){
+                        alert("error");
+                }
+            })
+    }
+
+     /**新增保存抽认卡**/
+     function add_form(){
+
+        add_ajaxForm()
+        $("#add_card").toggle()
+
+    }
+    /**添加新的抽认卡*/
+     function add_ajaxForm(){
+        var form= new FormData(document.querySelector("#add_form"));
+        console.log(form.toString());
+        $.ajax({
+            url:"{{ url_for('ajax_add_card') }}",
+            type:"post",
+            data:form,
+            dataType: 'json',
+            processData:false,
+            contentType:false,
+            success:function(data){
+                    $('#edit_card input.form-control').val($('#add_card input.form-control').val())
+                    $('#edit_card textarea.form-control').val($('#add_card textarea.form-control').val())
+                    $('h3.text-center').html($('#add_card input.form-control').val())
+                    $('div pre code').html($('#add_card textarea.form-control').val())
+                   
+                    $(' .largerText').html($('#edit_card textarea.form-control').val())
+                    $(".alert-success").toggle()
+                    setTimeout(
+                        function(){
+                            $(".alert-success").toggle()
+                        },2000
+                    );
+                    
+            },
+            error:function(e){
+                    alert("error");
+            }
+        })
+    }   
+
+    /**下一张抽认卡**/
+    function next_card(){
+        
+        $.ajax({
+            url:"{{ url_for(card_type) }}",
+            type:"get",
+            data:'',
+            dataType: 'json',
+            processData:false,
+            contentType:false,
+            success:function(data){
+                var string_code = $("div h2").html()
+                // 正则匹配 如果是相同的id号则重复检索
+                var regexp2 = /[0-9]+/g 
+                if(data.card.id==string_code.match(regexp2)[0]){
+                    next_card()
+                }else{
+                    console.log(data)
+                    $('h3.text-center').html(data.card.front)
+                    $('#edit_card input.form-control ').val(data.card.front)
+                    $('#edit_card textarea.form-control').val(data.card.back)
+                    $("div pre code").html(data.card.back)
+                    $("#edit_card h2").html("编辑抽认卡 #"+data.card.id)
+                    $(".largerText").html(data.card.back) // todo 暂时解决
+                    $(".cardBack .frontText").html(data.card.back) // todo 暂时解决
+                    $('#card_id').val(data.card.id)
+                }
+               
+            },
+            error:function(e){
+                    alert("error");
+            }
+        })
+    }
+    /**标记认识这张抽认卡*/
+    function mark_know(){
+        $.ajax({
+            url:"{{ url_for('ajax_mark_known',card_id=card.id,card_type=card_type)}}",
+            type:"get",
+            data:'',
+            dataType: 'json',
+            processData:false,
+            contentType:false,
+            success:function(data){
+                $(".alert-success").toggle()
+                setTimeout(
+                    function(){
+                        $(".alert-success").toggle()
+                    },2000
+                );
+            },
+            error:function(e){
+                    alert("error,请联系管理员");
+            }
+        })
+
+    }
+    
+    </script>
+    <style>
+        .btn-link {
+            position: absolute;
+            top: 6px;
+            right: 15px;
+          }
+        .alert-success {
+            position: absolute;
+            z-index: 3;
+            text-align: center;
+            width: 900px;
+        }
+        #link_add_card {
+            top:30px;
+        }
+        #link_delete_card {
+            top:52px;
+        }
+    </style>
+{% endblock %}
