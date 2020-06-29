@@ -147,8 +147,17 @@ def ajax_add_card():
                     request.form['back']
                     ])
         db.commit()
+    # select max(cast(id as int)) from  cards
+    cur = db.execute('select max(cast(id as int)) from  cards')
+    
+    
 
-    return json.dumps(request.form.to_dict());
+    message = {
+        'msg':'抽认卡保存成功！',
+        'lastrowid':cur.lastrowid
+    }
+    return json.dumps(message)
+    # return json.dumps(request.form.to_dict());
 
 
 @app.route('/edit/<card_id>')
@@ -166,7 +175,7 @@ def edit(card_id):
     return render_template('edit.html', card=card)
 
 
-@app.route('/edit_card', methods=['POST'])
+@app.route('/edit_card', methods=['POST','GET'])
 def edit_card():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
@@ -211,14 +220,22 @@ def edit_card():
                     request.form['card_id']
                     ])
         db.commit()
-    # flash('抽认卡保存成功.')
-    # message = {'msg':'抽认卡保存成功.'}
+
+
+    if request.form['card_type'] == "general":
+        type = 1
+    elif request.form['card_type'] == "code":
+        type = 2
+
+    cur = db.execute('SELECT id, type, front, back, known FROM cards where type = ?',[type])
+    cards = cur.fetchall()
     
+
     message = {
-        'msg':'抽认卡删除成功！'
+        'msg':'抽认卡保存成功！',
+        'cards_total_number':len(cards)
     }
     return json.dumps(message)
-
 
 @app.route('/delete/<card_id>')
 def delete(card_id):
@@ -236,11 +253,22 @@ def ajax_delete():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     db = get_db()
-    db.execute('DELETE FROM cards WHERE id = ?', [request.get_json()['card_id']]) 
+    db.execute('DELETE FROM cards WHERE id = ?', [request.get_json()['card_id']])
     db.commit()
     # flash('抽认卡删除成功.')
+    
+    if request.get_json()['card_type'] == "general":
+        type = 1
+    elif request.get_json()['card_type'] == "code":
+        type = 2
+
+    cur = db.execute('SELECT id, type, front, back, known FROM cards where type = ?',[type])
+    cards = cur.fetchall()
+    
+
     message = {
-        'msg':'抽认卡删除成功！'
+        'msg':'抽认卡删除成功！',
+        'cards_total_number':len(cards)
     }
     return json.dumps(message)
 
@@ -339,7 +367,9 @@ def get_card(type):
         id, type, front, back, known, img
       FROM cards
       WHERE
-        type = ?
+        type = ? 
+      AND 
+        known = 0
       ORDER BY RANDOM()
       LIMIT 1
     '''
@@ -374,16 +404,28 @@ def mark_known(card_id, card_type):
     flash('抽认卡被标记为认识.')
     return redirect(url_for(card_type))
 
-@app.route('/ajax_mark_known/<card_id>/<card_type>')
-def ajax_mark_known(card_id, card_type):
+@app.route('/ajax_mark_known',methods=['POST','GET'])
+def ajax_mark_known():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     db = get_db()
-    db.execute('UPDATE cards SET known = 1 WHERE id = ?', [card_id])
+    
+    db.execute('UPDATE cards SET known = 1 WHERE id = ?', [request.get_json()['card_id']])
     db.commit()
     # flash('抽认卡被标记为认识.')
+
+    if request.get_json()['card_type'] == "general":
+        type = 1
+    elif request.get_json()['card_type'] == "code":
+        type = 2
+
+    cur = db.execute('SELECT id, type, front, back, known FROM cards where type = ? AND known = ? ',[type,0])
+    cards = cur.fetchall()
+    
+
     message = {
-        'msg':'抽认卡被标记为认识'
+        'msg':'抽认卡标记成功！',
+        'cards_total_number':len(cards)
     }
     return json.dumps(message)
 
@@ -411,4 +453,4 @@ def logout():
 
 if __name__ == '__main__':
 
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=8000)
