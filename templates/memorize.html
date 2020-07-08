@@ -1,10 +1,35 @@
 {% extends "layout.html" %}
 {% block body %}
+<script>
+    // 日常问题/代码片段
+    function type_change(btn_active){
+        // 切换按钮状态
+        if(btn_active.nextElementSibling==null){
+            btn_active.previousElementSibling.className="btn btn-default"
+        }else{
+            btn_active.nextElementSibling.className="btn btn-default"
+        }
+        btn_active.className="btn btn-primary"
+        //获取当前请求类型
+        url_type = btn_active.name
+        //构建ajax请求
+        // uid = sessionStorage.getItem('uid')
+        sessionStorage.setItem('card_type',url_type)
+        //调用下一页的ajax请求，把类型改变查找下一页的方式。
+        next_card()
+
+
+
+    }
+
+
+</script>
+
     <div id="active_button_raw" class="row">
         <div class="col-xs-12 text-center">
             <div class="btn-group btn-group-lg" role="group" aria-label="card type">
-                <a href="{{ url_for('general') }}" class="btn btn-{{ "primary" if card_type == "json_general" else "default" }}">日常问题</a>
-                <a href="{{ url_for('code') }}" class="btn btn-{{ "primary" if card_type == "json_code" else "default" }}">代码片段</a>
+                <a name="json_general" class="btn btn-{{ "primary" if card_type == "json_general" else "default" }}" onclick="type_change(this)">日常问题</a>
+                <a name="json_code" class="btn btn-{{ "primary" if card_type == "json_code" else "default" }}" onclick="type_change(this)" >代码片段</a>
             </div>
         </div>
     </div>
@@ -127,6 +152,7 @@
 
         </div>
     </div>
+
     <div id='edit_card' class="well" style="display: none;">
         <h2>编辑抽认卡  #{{ card.id }}</h2>
         <form id="edit_form" method="post" class="cardForm">
@@ -148,9 +174,10 @@
                 <label for="back">抽认卡背面</label>
                 <div id="edit_img"><textarea name="back"
                           class="form-control"
-                          id="back"
+                          id="edit_back"
                           placeholder="back of card"
                           rows="12">{{ card.back|e }}</textarea></div>
+                <input id="uid_edit" name="uid" type="hidden" />
             </div>
             <div class="row">
                 <div class="col-xs-6">
@@ -197,12 +224,14 @@
                 <label for="back">抽认卡背面</label>
                 <textarea name="back"
                           class="form-control"
-                          id="back"
+                          id="add_back"
                           placeholder="back of card"
                           rows="12">
                         </textarea>
                         <div id="preview" ></div>
                         <input id="img" name="img" type="hidden"/>
+                        <input id="uid" name="uid" type="hidden"/>
+                        
                           <p id="log"></p>
             </div>
             <div class="form-group">
@@ -211,8 +240,34 @@
         </form>
     </div>
     
-
+    <!-- <script>
+        tinymce.init({
+            selector: '#edit_back',
+            language:'zh_CN',//注意大小写
+            
+        });
+    </script> -->
     <script>
+        // jquery传过来数据是否为空
+        card = "{{card}}"
+        if(card=="None"){
+            //隐藏记忆卡，使用添加按钮
+            $('.memorizePanel').toggle()
+            $('.col-xs-12.text-center').toggle()
+            $("#add_card").toggle()
+
+        }
+        sessionStorage.setItem('card_type','{{card_type}}')
+        tinymce.init({
+            selector: '#add_back',
+            language:'zh_CN',//注意大小写
+            
+        });
+        tinymce.init({
+            selector: '#edit_back',
+            language:'zh_CN',//注意大小写
+            
+        });
         document.addEventListener('paste', function (event) {
             var items = (event.clipboardData || window.clipboardData).items;
             var file = null;
@@ -234,7 +289,7 @@
             }
             // 此时file就是我们的剪切板中的图片对象
             // 如果需要预览，可以执行下面代码
-            $('#add_card #back').toggle()
+            $('#add_card #add_back').toggle()
             var reader = new FileReader()
             reader.onload = function(event) {
                 console.log(event.target.result)
@@ -254,18 +309,21 @@
          $("#edit_card").toggle()
          
         }
-        /**抽认卡ajax删除*/
+        /**抽认卡ajax删除、删除抽认卡*/
         function delete_card(){
             var string_code = $("#edit_card h2").html()
+            uid = sessionStorage.getItem('uid')
                 // 正则匹配 如果是相同的id号则重复检索
             var regexp2 = /[0-9]+/g 
             var card_id =string_code.match(regexp2)[0]
-            var card_type = $('#active_button_raw .btn-primary')[0].href.match('/\/.*\/(.*)')[1]
+            // var card_type = $('#active_button_raw .btn-primary')[0].href.match('/\/.*\/(.*)')[1]
+            var card_type = sessionStorage.getItem('card_type')
             $.ajax({
                 url:"{{ url_for('ajax_delete')}}",
                 type:"POST",
                 data:JSON.stringify({'card_id':card_id,
-                                     'card_type':card_type
+                                     'card_type':card_type,
+                                     'uid':uid
             }),
                 dataType: 'json',
                 processData:false,
@@ -293,19 +351,22 @@
          $('#img').val('')
          if ($('#preview').html()!=""){
             $('#preview').html('')
-            $('#back').toggle()
+            $('#add_back').toggle()
          }
         }
         function edit_save_card(){
             if (typeof($('#edit_img img')[0])!='undefined'){
                 $('#card_img_save').val($('#edit_img img')[0].src)
-                $('#back').val("back")
+                $('#edit_back').val("back")
             }
+            // 编辑抽认卡保存时，替换val区域为tinymce内容区域
+            $('#edit_back').val(tinyMCE.activeEditor.getContent())
+            $('#uid_edit').val(sessionStorage.getItem('uid'))
             ajaxForm()
             $("#edit_card").toggle()
 
         }
-        /**修改保存抽认卡**/
+        /**修改保存抽认卡，编辑抽认卡**/
         function ajaxForm(){
             var form= new FormData(document.querySelector("#edit_form"));
             //添加card_type传输
@@ -313,7 +374,8 @@
             // 正则匹配 如果是相同的id号则重复检索
             var regexp2 = /[0-9]+/g 
             var card_id =string_code.match(regexp2)[0]
-            var card_type = $('#active_button_raw .btn-primary')[0].href.match('/\/.*\/(.*)')[1]
+            // var card_type = $('#active_button_raw .btn-primary')[0].href.match('/\/.*\/(.*)')[1]
+            card_type = sessionStorage.getItem('card_type')
             // form.append('card_type',card_type)
             form.append('card_type',card_type)
             $.ajax({
@@ -351,9 +413,15 @@
 
      /**新增保存抽认卡**/
      function add_form(){
-
+        $('#add_back').val(tinyMCE.activeEditor.getContent())
+        $('#uid').val(sessionStorage.getItem('uid'))
         add_ajaxForm()
         $("#add_card").toggle()
+        // 当抽记页面隐藏，添加完就显示该页面
+        if($(".memorizePanel").is(":hidden")){
+            $('.memorizePanel').toggle()
+            $('.col-xs-12.text-center').toggle()
+        }
 
     }
     /**添加新的抽认卡*/
@@ -391,24 +459,31 @@
         })
     }   
 
-    /**下一张抽认卡**/
+    /**下一张 抽认卡、下一页**/
     function next_card(){
-        
+        uid = sessionStorage.getItem('uid')
         $.ajax({
-            url:"{{ url_for(card_type) }}",
-            type:"get",
-            data:'',
+            url:"http://localhost:8088/"+sessionStorage.getItem('card_type'),
+            type:"POST",
+            data:JSON.stringify({'uid':uid}),
             dataType: 'json',
             processData:false,
-            contentType:false,
+            contentType:'application/json',
             success:function(data){
                 var string_code = $("#edit_card h2").html()
                 // 正则匹配 如果是相同的id号则重复检索
                 var regexp2 = /[0-9]+/g 
-                if(data.card.id==string_code.match(regexp2)[0]){
+                if (data.card=="None"){
+                                        // 当前div隐藏，显示添加div框 ,适用于，第一次进入没数据，删除没数据，下一页没数据（编辑，mark都解决）
+                    $('.memorizePanel').toggle()
+                    $('.col-xs-12.text-center').toggle()
+                    $("#add_card").toggle()
+                    return;
+                }
+                if(data.card.id==string_code.match(regexp2)[0]&&data.cards_total_number>1){
                     next_card()
                 }else{
-                    console.log(data.card.img)
+                    
                     //点击下一页，如果是图片添加图片输出展示
                     if(data.card.img!=null){
                         $('h3.text-center').html(data.card.front)
@@ -429,8 +504,14 @@
                         $(".cardBack .frontText").html(data.card.back) // todo 暂时解决
                         $('#card_id').val(data.card.id)
                         //点击下一页如果是文字则返回文本textarea标签
-                        textarea = "<textarea name='back' class='form-control' id='back' placeholder='back of card' rows='12'>"+data.card.back+" </textarea>"
+                        textarea = "<textarea name='back' class='form-control' id='edit_back' placeholder='back of card' rows='12'>"+data.card.back+" </textarea>"
                         edit_img.innerHTML = textarea
+                        // 需要重新渲染该textarea为tiny
+                        tinymce.init({
+                            selector: '#edit_back',
+                            language:'zh_CN',//注意大小写
+                            
+                        });
                     }
                 }
                
@@ -448,15 +529,16 @@
         var regexp2 = /[0-9]+/g 
         var card_id =string_code.match(regexp2)[0]
        // 正则匹配 如果是相同的id号则重复检索
-        var card_type = $('#active_button_raw .btn-primary')[0].href.match('/\/.*\/(.*)')[1]
-        
+        // var card_type = $('#active_button_raw .btn-primary')[0].href.match('/\/.*\/(.*)')[1]
+        card_type = sessionStorage.getItem('card_type')
 
 
         $.ajax({
             url:"{{ url_for('ajax_mark_known')}}",
             type:"post",
             data:JSON.stringify({'card_id':card_id,
-                                  'card_type':card_type
+                                  'card_type':card_type,
+                                  'uid':sessionStorage.getItem('uid')
                                 }),
             dataType: 'json',
             processData:false,
