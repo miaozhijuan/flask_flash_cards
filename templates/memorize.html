@@ -222,12 +222,37 @@
             </div>
             <div class="form-group fieldBack">
                 <label for="back">抽认卡背面</label>
-                <textarea name="back"
-                          class="form-control"
-                          id="add_back"
-                          placeholder="back of card"
-                          rows="12">
-                        </textarea>
+               
+                <ul id="myTab" class="nav nav-tabs">
+                    <li class="active">
+                        <a href="#home" data-toggle="tab">
+                             富文本编辑
+                        </a>
+                    </li>
+                    <li><a href="#ios" data-toggle="tab">markdown编辑</a></li>
+                    
+                </ul>
+                <div id="myTabContent" class="tab-content">
+                    <div class="tab-pane fade in active" id="home">
+                         <textarea name="back"
+                                          class="form-control"
+                                          id="add_back"
+                                          placeholder="back of card"
+                                          rows="12">
+                                        </textarea>
+                    </div>
+                    <div class="tab-pane fade" id="ios">
+                        <div class="wrapper">
+   
+                            <div id="vditor" style="max-width: 1000px"></div>
+                            <div id="vditorComments"></div>
+                        
+                        </div>
+
+                    </div>
+                    
+                </div>
+
                         <div id="preview" ></div>
                         <input id="img" name="img" type="hidden"/>
                         <input id="uid" name="uid" type="hidden"/>
@@ -247,7 +272,121 @@
             
         });
     </script> -->
+    
+<script>
+	const addScript = (path, callback) => {
+    const scriptElement = document.createElement('script')
+    scriptElement.src = path
+    scriptElement.async = true
+    document.head.appendChild(scriptElement)
+    scriptElement.onload = () => {
+        callback()
+    }
+}
+
+const updateCode = (btnElement, code) => {
+    if (btnElement.classList.contains('btn--red')) {
+        return
+    } else {
+        const redBtnElement = document.querySelector('.btn--red')
+        if (redBtnElement) {
+            redBtnElement.classList.remove('btn--red')
+        }
+        btnElement.classList.add('btn--red')
+    }
+
+    const demoCodeElement = document.getElementById('vditorDemoCode')
+    demoCodeElement.firstElementChild.innerHTML = `<code>${code}
+</code>`
+    Vditor.highlightRender({
+        lineNumber: true,
+        enable: true
+    }, demoCodeElement)
+    Vditor.codeRender(demoCodeElement)
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var hm = document.createElement('script')
+    hm.src = 'https://hm.baidu.com/hm.js?3035c273d83b0b76e762b7397c790e84'
+    var s = document.getElementsByTagName('script')[0]
+    s.parentNode.insertBefore(hm, s)
+
+    if (document.getElementById('vditorComments')) {
+        addScript('https://cdn.jsdelivr.net/npm/vditor@3.3.2/dist/index.min.js',
+            () => {
+                const demoCodeElement = document.getElementById('vditorDemoCode')
+                if (demoCodeElement) {
+                    Vditor.highlightRender({
+                            lineNumber: true,
+                            enable: true
+                        },
+                        demoCodeElement)
+                    Vditor.codeRender(demoCodeElement)
+                }
+                if (typeof vditorScript !== 'undefined') {
+                    vditorScript()
+                }
+//                 addScript('https://cdn.jsdelivr.net/npm/vcmt@latest/dist/index.min.js',
+//                     () => {
+//                         const vcomment = new Vcomment({
+//                             id: 'vditorComments',
+//                             postId: '154963874563022',
+//                             url: 'https://hacpai.com',
+//                             userName: 'Vanessa',
+//                             currentPage: 1,
+//                             vditor: {
+//                                 hljsEnable: true,
+//                                 hljsStyle: 'github',
+//                             },
+//                             after() {
+//                                 const commentCntElement = document.getElementById(
+//                                     'commentsCount')
+//                                 document.getElementById(
+//                                     'commentCnt').innerText = commentCntElement.innerText + ' 个讨论'
+//                                 commentCntElement.nextSibling.remove()
+//                                 commentCntElement.remove()
+//                             },
+//                             error() {
+//                                 document.getElementById('comments').remove()
+//                             },
+//                         })
+// 
+//                         vcomment.render()
+//                     })
+            })
+    }
+})
+ 
+</script>
     <script>
+        vditorScript = () => {
+            new Vditor('vditor', {
+              toolbarConfig: {
+                pin: true,
+              },
+              width:1300,
+              height:200,
+              counter: {
+                enable: true,
+              },
+              toolbar: [
+                'emoji',
+                'link',
+                'upload',
+                'edit-mode',
+                {
+                  name: 'more',
+                  toolbar: [
+                    'insert-after',
+                    'fullscreen',
+                    'preview',
+                    'info',
+                    'help',
+                  ],
+                },
+              ],
+            })
+          }
         // jquery传过来数据是否为空
         card = "{{card}}"
         if(card=="None"){
@@ -258,16 +397,49 @@
 
         }
         sessionStorage.setItem('card_type','{{card_type}}')
+        
         tinymce.init({
             selector: '#add_back',
             language:'zh_CN',//注意大小写
-            
+            plugins:  [
+            "advlist autolink lists link image charmap print preview hr anchor pagebreak",
+            "searchreplace wordcount visualblocks visualchars code fullscreen",
+            "insertdatetime media nonbreaking save table contextmenu directionality",
+            "emoticons template paste textcolor colorpicker textpattern code"
+            ],
+            paste_data_images: true,
+            toolbar: 'image',
+            images_upload_credentials: true,
+            images_reuse_filename: true,
+            image_advtab: true, // IMAGE ADVANCED TAB
+            images_upload_base_path: 'files',
+            images_upload_url: 'doFileUpload.asp',
+            automatic_uploads: true,
+            file_picker_types: 'file, image, media',
+            file_picker_callback: function(callback, value, meta) {
+                //alert(7)
+            },
+            images_dataimg_filter: function(img) {
+              //  alert(5) // 这时候只要添加是必然经过这里的所以可以再这里做文章，可能也跟自己的版本号有关系
+                return !img.hasAttribute('internal-blob');  // blocks the upload of <img> elements with the attribute "internal-blob".
+              },
+            images_upload_handler: function (blobInfo, success, failure) {
+                var xhr, formData;
+              //  alert(1)
+               
+            }
         });
         tinymce.init({
             selector: '#edit_back',
             language:'zh_CN',//注意大小写
-            
+            plugins: 'image',
+            toolbar: 'image',
+            images_upload_handler: function (blobInfo, success, failure) {
+              //  alert(2)
+               
+            }
         });
+       
         document.addEventListener('paste', function (event) {
             var items = (event.clipboardData || window.clipboardData).items;
             var file = null;
@@ -510,7 +682,13 @@
                         tinymce.init({
                             selector: '#edit_back',
                             language:'zh_CN',//注意大小写
-                            
+                            plugins: 'image',
+                            toolbar: 'image',
+                            images_upload_handler: function (blobInfo, success, failure) {
+                                var xhr, formData;
+                                //alert(3)
+                                
+                            }
                         });
                     }
                 }
