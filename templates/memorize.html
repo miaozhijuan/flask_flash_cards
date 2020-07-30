@@ -256,6 +256,7 @@
                         <div id="preview" ></div>
                         <input id="img" name="img" type="hidden"/>
                         <input id="uid" name="uid" type="hidden"/>
+                        <input id="eid" name="eid" type="hidden" value="{{ card.eid }}"/>
                         
                           <p id="log"></p>
             </div>
@@ -359,6 +360,75 @@ document.addEventListener('DOMContentLoaded', function() {
  
 </script>
     <script>
+        var content = ''
+        function promiseRequest(url) {
+            return new Promise((resolve, reject) => {
+              var xhr = new XMLHttpRequest()
+              xhr.responseType = 'blob';  
+              xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4) {
+                  if (xhr.status === 200) {
+                    resolve(xhr.response)
+                  } else {
+                    reject(xhr.response)
+                  }
+                }
+              }
+              xhr.open('GET', url, true)
+              xhr.send(null)
+            }).catch(err => {
+              console.log(err)
+              reject(err)
+            })
+          }
+          //----------------------------------
+          function blobToDataURL(blob, callback) {
+            let reader = new FileReader()
+            reader.onload = (e) => {
+                if (callback) {
+                    callback(e.target.result)
+                }
+            }
+            reader.readAsDataURL(blob_data)
+
+        }
+
+          function promiseBlobToBase64(url) {
+            return new Promise((resolve, reject) => {
+                let reader = new FileReader()
+                reader.onload = (e) => {
+                    resolve(e.target.result)
+                }
+            reader.readAsDataURL(blob_data)
+
+              var xhr = new XMLHttpRequest()
+              xhr.responseType = 'blob';  
+              xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4) {
+                  if (xhr.status === 200) {
+                    resolve(xhr.response)
+                  } else {
+                    reject(xhr.response)
+                  }
+                }
+              }
+              xhr.open('GET', url, true)
+              xhr.send(null)
+            }).catch(err => {
+              console.log(err)
+              reject(err)
+            })
+          }
+        function sleep(numberMillis) {
+            var now = new Date();
+            var exitTime = now.getTime() + numberMillis;
+            while (true) {
+                now = new Date();
+                if (now.getTime() > exitTime)
+                return;
+                }
+        }
+
         vditorScript = () => {
             new Vditor('vditor', {
               toolbarConfig: {
@@ -388,16 +458,14 @@ document.addEventListener('DOMContentLoaded', function() {
             })
           }
         // jquery传过来数据是否为空
-        card = "{{card}}"
-        if(card=="None"){
-            //隐藏记忆卡，使用添加按钮
-            $('.memorizePanel').toggle()
-            $('.col-xs-12.text-center').toggle()
-            $("#add_card").toggle()
-
-        }
-        sessionStorage.setItem('card_type','{{card_type}}')
         
+        sessionStorage.setItem('card_type','{{card_type}}')
+        // blob转base64
+        function blobToDataURL(blob, callback) {
+            var a = new FileReader();
+            a.onload = function (e) { callback(e.target.result); }
+            a.readAsDataURL(blob);
+        }
         tinymce.init({
             selector: '#add_back',
             language:'zh_CN',//注意大小写
@@ -407,8 +475,16 @@ document.addEventListener('DOMContentLoaded', function() {
             "insertdatetime media nonbreaking save table contextmenu directionality",
             "emoticons template paste textcolor colorpicker textpattern code"
             ],
-            paste_data_images: true,
             toolbar: 'image',
+            paste_data_images: true,
+            paste_preprocess: function(plugin, args) { 
+                //如果是粘贴的图片，以此种特定字符开头的进行url替换
+                if(args.content.startsWith("<img src=\"blob:http://localhost")){
+                    args.content = content  
+                }
+                console.log("past_preprocess:"+args.content)
+                
+            },
             images_upload_credentials: true,
             images_reuse_filename: true,
             image_advtab: true, // IMAGE ADVANCED TAB
@@ -417,25 +493,106 @@ document.addEventListener('DOMContentLoaded', function() {
             automatic_uploads: true,
             file_picker_types: 'file, image, media',
             file_picker_callback: function(callback, value, meta) {
-                //alert(7)
+                // alert(7)
             },
             images_dataimg_filter: function(img) {
-              //  alert(5) // 这时候只要添加是必然经过这里的所以可以再这里做文章，可能也跟自己的版本号有关系
+
+                //可以在这里把文件上传，使用全局参数保存路径，最后在处理的时候替换img.src实现
+                var base64  = img.src.split(",")[1]
+                var timestamp=new Date().getTime()
+                var imgname = timestamp+'.jpg'
+                
+                $.ajax({
+                    url:"https://gitee.com/api/v5/repos/li521miao/images/contents/"+imgname,
+                    type:"post",
+                    data:'{"access_token":"199bec3847cb284ca03f139970f7b691","content":"'+base64+'","message":"upload for images"}',
+                    dataType: 'json',
+                    processData:false,
+                    async: false,
+                    contentType:"application/json;charset=UTF-8",
+                    success:function(data){
+                        imgSrc = data.content.download_url
+                        
+                        // 3------------------返回图床图片的url地址替换。数据库保存到是图片地址而不是图片二进制文件，提高访问速度。异步请求导致数据问题，解决方案，异步转同步：async: false,
+                        content="<img src ='"+imgSrc+"' />"
+                        console.log("upload:"+content)
+                    },
+                    error:function(e){
+                            alert("error");
+                            console.log(e)
+                            
+                    }
+                })
                 return !img.hasAttribute('internal-blob');  // blocks the upload of <img> elements with the attribute "internal-blob".
               },
             images_upload_handler: function (blobInfo, success, failure) {
-                var xhr, formData;
-              //  alert(1)
+               // var xhr, formData;
+                // alert(1)
                
             }
         });
         tinymce.init({
             selector: '#edit_back',
             language:'zh_CN',//注意大小写
-            plugins: 'image',
+            plugins:  [
+            "advlist autolink lists link image charmap print preview hr anchor pagebreak",
+            "searchreplace wordcount visualblocks visualchars code fullscreen",
+            "insertdatetime media nonbreaking save table contextmenu directionality",
+            "emoticons template paste textcolor colorpicker textpattern code"
+            ],
             toolbar: 'image',
+            paste_data_images: true,
+            paste_preprocess: function(plugin, args) {
+                //如果是粘贴的图片，以此种特定字符开头的进行url替换
+                if(args.content.startsWith("<img src=\"blob:http://localhost")){
+                    args.content = content  
+                }
+                console.log("past_preprocess:"+args.content)
+                
+            },
+            images_upload_credentials: true,
+            images_reuse_filename: true,
+            image_advtab: true, // IMAGE ADVANCED TAB
+            images_upload_base_path: 'files',
+            images_upload_url: 'doFileUpload.asp',
+            automatic_uploads: true,
+            file_picker_types: 'file, image, media',
+            file_picker_callback: function(callback, value, meta) {
+                // alert(7)
+            },
+            images_dataimg_filter: function(img) {
+
+                //可以在这里把文件上传，使用全局参数保存路径，最后在处理的时候替换img.src实现
+                var base64  = img.src.split(",")[1]
+                var timestamp=new Date().getTime()
+                var imgname = timestamp+'.jpg'
+                
+                $.ajax({
+                    url:"https://gitee.com/api/v5/repos/li521miao/images/contents/"+imgname,
+                    type:"post",
+                    data:'{"access_token":"199bec3847cb284ca03f139970f7b691","content":"'+base64+'","message":"upload for images"}',
+                    dataType: 'json',
+                    processData:false,
+                    async: false,
+                    contentType:"application/json;charset=UTF-8",
+                    success:function(data){
+                        imgSrc = data.content.download_url
+                        
+                        // 3------------------返回图床图片的url地址替换。数据库保存到是图片地址而不是图片二进制文件，提高访问速度。异步请求导致数据问题，解决方案，异步转同步：async: false,
+                        content="<img src ='"+imgSrc+"' />"
+                        console.log("upload:"+content)
+                    },
+                    error:function(e){
+                            alert("error");
+                            console.log(e)
+                            
+                    }
+                })
+                return !img.hasAttribute('internal-blob');  // blocks the upload of <img> elements with the attribute "internal-blob".
+              },
             images_upload_handler: function (blobInfo, success, failure) {
-              //  alert(2)
+               // var xhr, formData;
+                // alert(1)
                
             }
         });
@@ -483,6 +640,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         /**抽认卡ajax删除、删除抽认卡*/
         function delete_card(){
+
+
+            // ----------------------删除的时候是否进行确认elasticsearch 也已经删除成功？ 不需要 直接给个提示吧
+            // ----------------------如果删除走了下一页逻辑，eid value会重置造成幻读，所以要先删除elastic中的索引
+            if($("#eid").val()!=""){
+                $.ajax({
+                    url:"http://39.106.226.131:9200/users/_doc/"+$("#eid").val(),
+                    type:"DELETE",
+                    data:"",
+                    dataType: 'json',
+                    processData:false,
+                    contentType:"application/json",
+                    success:function(data){
+                            console.log(data)
+                    },
+                    error:function(e){
+                            console.log(e)
+                            alert("error,请联系管理员");
+                    }
+                })
+            }
+
+
             var string_code = $("#edit_card h2").html()
             uid = sessionStorage.getItem('uid')
                 // 正则匹配 如果是相同的id号则重复检索
@@ -490,6 +670,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var card_id =string_code.match(regexp2)[0]
             // var card_type = $('#active_button_raw .btn-primary')[0].href.match('/\/.*\/(.*)')[1]
             var card_type = sessionStorage.getItem('card_type')
+            
             $.ajax({
                 url:"{{ url_for('ajax_delete')}}",
                 type:"POST",
@@ -512,6 +693,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         alert("error,请联系管理员");
                 }
             })
+            
 
         }
         function add_card(){
@@ -581,6 +763,49 @@ document.addEventListener('DOMContentLoaded', function() {
                         alert("error");
                 }
             })
+
+
+            // -------------------------------- 修改的话 eid不会变uid用不到，只是更新操作
+
+            type = form.get('type')
+            front  = form.get('front')
+            back = form.get('back')
+            if(back==null){
+                back = tinyMCE.activeEditor.getContent()
+            }
+            // 添加内容到elasticsearch,加入知识图谱功能,后台检索平台
+            if($('#eid').val()!=""){
+                
+                $.ajax({
+                    url:"http://39.106.226.131:9200/users/_update/"+$('#eid').val(),
+                    type:"post",
+                    data:JSON.stringify({
+                            "doc":{
+                                'type':type,
+                                'front':front,
+                                'back':back,
+                                }
+                          }),
+                    dataType: 'json',
+                    async: false,
+                    processData:false,
+                    contentType:'application/json',
+                    success:function(data){ 
+                            alert(data)
+                            console.log(data)
+                            eid = data._id
+                    },
+                    error:function(e){
+                        
+                            alert("error");
+                            console.log(e)
+                    
+                    }
+                })
+            }
+
+
+
     }
 
      /**新增保存抽认卡**/
@@ -600,6 +825,44 @@ document.addEventListener('DOMContentLoaded', function() {
      function add_ajaxForm(){
         var form= new FormData(document.querySelector("#add_form"));
         console.log(form.toString());
+        // ---------------------------获取eid 
+        var eid = ''
+        uid = sessionStorage.getItem('uid')
+        type = $('.toggleSelected input')[0].value
+        front  = $('.fieldFront .form-control')[0].value
+        back = tinyMCE.activeEditor.getContent()
+        // 添加内容到elasticsearch,加入知识图谱功能,后台检索平台
+        $.ajax({
+            url:"http://39.106.226.131:9200/users/_doc",
+            type:"post",
+            data:JSON.stringify({'uid':uid,
+            'type':type,
+            'front':front,
+            'back':back,
+            }),
+            dataType: 'json',
+            async: false,
+            processData:false,
+            contentType:'application/json',
+            success:function(data){ 
+                    alert(data)
+                    console.log(data)
+                    eid = data._id
+            },
+            error:function(e){
+                
+                    alert("error");
+                    console.log(e)
+               
+            }
+        })
+        console.log("eid="+eid)
+        if(eid==""){
+            alert("eid 为空")
+        }
+        // -----------------eid加入到form中
+        $('#eid').val(eid)
+        // ----------------------添加eid到数据表中
         $.ajax({
             url:"{{ url_for('ajax_add_card') }}",
             type:"post",
@@ -629,6 +892,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert("error");
             }
         })
+        //拼接json数据给elasticsearch 不经过中间层了。
+       
+
     }   
 
     /**下一张 抽认卡、下一页**/
@@ -658,6 +924,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     //点击下一页，如果是图片添加图片输出展示
                     if(data.card.img!=null){
+                        $('#eid').val(data.card.eid)
                         $('h3.text-center').html(data.card.front)
                         $('#edit_card input.form-control ').val(data.card.front)
                         $("#edit_card h2").html("编辑抽认卡 #"+data.card.id)
@@ -667,6 +934,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         edit_img.innerHTML = card_img
                         
                     }else{
+                        $('#eid').val(data.card.eid)
                         $('h3.text-center').html(data.card.front)
                         $('#edit_card input.form-control ').val(data.card.front)
                         $('#edit_card textarea.form-control').val(data.card.back)
@@ -681,13 +949,68 @@ document.addEventListener('DOMContentLoaded', function() {
                         // 需要重新渲染该textarea为tiny
                         tinymce.init({
                             selector: '#edit_back',
+                            selector: '#add_back',
                             language:'zh_CN',//注意大小写
-                            plugins: 'image',
+                            plugins:  [
+                            "advlist autolink lists link image charmap print preview hr anchor pagebreak",
+                            "searchreplace wordcount visualblocks visualchars code fullscreen",
+                            "insertdatetime media nonbreaking save table contextmenu directionality",
+                            "emoticons template paste textcolor colorpicker textpattern code"
+                            ],
                             toolbar: 'image',
-                            images_upload_handler: function (blobInfo, success, failure) {
-                                var xhr, formData;
-                                //alert(3)
+                            paste_data_images: true,
+                            paste_preprocess: function(plugin, args) { 
+                                //如果是粘贴的图片，以此种特定字符开头的进行url替换
+                                if(args.content.startsWith("<img src=\"blob:http://localhost")){
+                                    args.content = content  
+                                }
+                                console.log("past_preprocess:"+args.content)
                                 
+                            },
+                            images_upload_credentials: true,
+                            images_reuse_filename: true,
+                            image_advtab: true, // IMAGE ADVANCED TAB
+                            images_upload_base_path: 'files',
+                            images_upload_url: 'doFileUpload.asp',
+                            automatic_uploads: true,
+                            file_picker_types: 'file, image, media',
+                            file_picker_callback: function(callback, value, meta) {
+                                // alert(7)
+                            },
+                            images_dataimg_filter: function(img) {
+
+                                //可以在这里把文件上传，使用全局参数保存路径，最后在处理的时候替换img.src实现
+                                var base64  = img.src.split(",")[1]
+                                var timestamp=new Date().getTime()
+                                var imgname = timestamp+'.jpg'
+                                
+                                $.ajax({
+                                    url:"https://gitee.com/api/v5/repos/li521miao/images/contents/"+imgname,
+                                    type:"post",
+                                    data:'{"access_token":"199bec3847cb284ca03f139970f7b691","content":"'+base64+'","message":"upload for images"}',
+                                    dataType: 'json',
+                                    processData:false,
+                                    async: false,
+                                    contentType:"application/json;charset=UTF-8",
+                                    success:function(data){
+                                        imgSrc = data.content.download_url
+                                        
+                                        // 3------------------返回图床图片的url地址替换。数据库保存到是图片地址而不是图片二进制文件，提高访问速度。异步请求导致数据问题，解决方案，异步转同步：async: false,
+                                        content="<img src ='"+imgSrc+"' />"
+                                        console.log("upload:"+content)
+                                    },
+                                    error:function(e){
+                                            alert("error");
+                                            console.log(e)
+                                            
+                                    }
+                                })
+                                return !img.hasAttribute('internal-blob');  // blocks the upload of <img> elements with the attribute "internal-blob".
+                            },
+                            images_upload_handler: function (blobInfo, success, failure) {
+                            // var xhr, formData;
+                                // alert(1)
+                            
                             }
                         });
                     }

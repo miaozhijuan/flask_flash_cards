@@ -133,20 +133,22 @@ def ajax_add_card():
         return redirect(url_for('login'))
     db = get_db()
     if(request.form['img']!=''):
-        db.execute('INSERT INTO cards (type, front, back,img,uid) VALUES (?, ?, ?,?,?)',
+        db.execute('INSERT INTO cards (type, front, back,img,uid,eid) VALUES (?, ?, ?,?,?,?)',
                 [request.form['type'],
                     request.form['front'],
                     request.form['back'],
                     request.form['img'],
-                    request.form['uid']
+                    request.form['uid'],
+                    request.form['eid']
                     ])
         db.commit()
     else:
-        db.execute('INSERT INTO cards (type, front, back,uid) VALUES (?, ?, ?,?)',
+        db.execute('INSERT INTO cards (type, front, back,uid,eid) VALUES (?, ?, ?,?,?)',
                 [request.form['type'],
                     request.form['front'],
                     request.form['back'],
-                    request.form['uid']
+                    request.form['uid'],
+                    request.form['eid']
                     ])
         db.commit()
     # select max(cast(id as int)) from  cards 
@@ -369,6 +371,7 @@ def json_memorize(card_type, card_id,uid):
     d_row['back'] = card['back']
     d_row['known'] = card['known']
     d_row['img'] = card['img']
+    d_row['eid'] = card['eid']
 
     # 获取 当前类别，当前用户的未markknow的数据总数
     db = get_db()
@@ -388,7 +391,7 @@ def get_card(type,uid):
 
     query = '''
       SELECT
-        id, type, front, back, known, img
+        id, type, front, back, known, img,eid
       FROM cards
       WHERE
         type = ? 
