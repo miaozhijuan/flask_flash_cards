@@ -194,7 +194,8 @@ def edit_card():
             front = ?,
             back = ?,
             known = ?,
-            img = ?
+            img = ?,
+            eid = ?
             WHERE id = ?
         '''
         db.execute(command,
@@ -203,7 +204,9 @@ def edit_card():
                     'back',
                     known,
                     request.form['img'],
+                    request.form['eid'],
                     request.form['card_id']
+
                     ])
         db.commit()
     else:
@@ -213,7 +216,8 @@ def edit_card():
             type = ?,
             front = ?,
             back = ?,
-            known = ?
+            known = ?,
+            eid = ?
             WHERE id = ?
         '''
         db.execute(command,
@@ -221,6 +225,7 @@ def edit_card():
                     request.form['front'],
                     request.form['back'],
                     known,
+                    request.form['eid'],
                     request.form['card_id']
                     ])
         db.commit()

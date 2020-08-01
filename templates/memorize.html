@@ -25,6 +25,7 @@
 
 </script>
 
+   
     <div id="active_button_raw" class="row">
         <div class="col-xs-12 text-center">
             <div class="btn-group btn-group-lg" role="group" aria-label="card type">
@@ -265,7 +266,17 @@
             </div>
         </form>
     </div>
-    
+<!-- 检索抽认卡、搜索、查询 -->
+    <div class="searchCard"> 
+        <div class="input-group mb-3">
+            <input type="text" class="form-control" >
+            <div class="input-group-append" >
+              <button class="btn btn-outline-secondary" type="button" onclick="search('')">查询</button>
+            </div>
+          </div>
+          
+    </div>
+    <div class="searchContext"></div>
     <!-- <script>
         tinymce.init({
             selector: '#edit_back',
@@ -881,6 +892,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     var card_id = data.lastrowid
                     var flag_message = '编辑抽认卡 #'+card_id
                     $("#edit_card h2").html(flag_message)
+                    $("#card_id").val(card_id)
                     setTimeout(
                         function(){
                             $(".alert-success").toggle()
@@ -900,12 +912,15 @@ document.addEventListener('DOMContentLoaded', function() {
     /**下一张 抽认卡、下一页**/
     function next_card(){
         uid = sessionStorage.getItem('uid')
+        var eid = ""
+        var data_es = {card:{id:"",front:"",back:"",uid:""}}
         $.ajax({
             url:"http://localhost:8088/"+sessionStorage.getItem('card_type'),
             type:"POST",
             data:JSON.stringify({'uid':uid}),
             dataType: 'json',
             processData:false,
+            async:false,
             contentType:'application/json',
             success:function(data){
                 var string_code = $("#edit_card h2").html()
@@ -921,7 +936,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if(data.card.id==string_code.match(regexp2)[0]&&data.cards_total_number>1){
                     next_card()
                 }else{
+                    // ----------------------如果eid不存在的话，进入ela创建流程，然后更新mysql数据
                     
+                    
+                    data_es.card.uid = uid
                     //点击下一页，如果是图片添加图片输出展示
                     if(data.card.img!=null){
                         $('#eid').val(data.card.eid)
@@ -932,6 +950,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         card_img = '<img src="' + data.card.img + '" class="upload-image">'
                         back_card_img.innerHTML = card_img
                         edit_img.innerHTML = card_img
+                        //
+                        data_es = data
                         
                     }else{
                         $('#eid').val(data.card.eid)
@@ -943,6 +963,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         $(".largerText").html(data.card.back) // todo 暂时解决
                         $(".cardBack .frontText").html(data.card.back) // todo 暂时解决
                         $('#card_id').val(data.card.id)
+                         //
+                        data_es = data
+                        //
+                        eid = data.card.eid
                         //点击下一页如果是文字则返回文本textarea标签
                         textarea = "<textarea name='back' class='form-control' id='edit_back' placeholder='back of card' rows='12'>"+data.card.back+" </textarea>"
                         edit_img.innerHTML = textarea
@@ -1014,13 +1038,115 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         });
                     }
+
+                    
                 }
+                
                
             },
             error:function(e){
                     alert("error");
             }
         })
+        // todo 需要添加逻辑，如果数据库中有,es中没有。
+        if(eid==""||eid == null){
+            //---------数据刷到eid中，然后更新eid id号到关系数据库中
+
+            //var form= new FormData(document.querySelector("#add_form"));
+            //console.log(form.toString());
+            // ---------------------------获取eid 
+            var eid = ''
+            uid = sessionStorage.getItem('uid')
+            type = data_es.card.type
+            front  = data_es.card.front
+            var back = data_es.card.back
+            // 添加内容到elasticsearch,加入知识图谱功能,后台检索平台
+            $.ajax({
+                url:"http://39.106.226.131:9200/users/_doc",
+                type:"post",
+                data:JSON.stringify({'uid':uid,
+                'type':type,
+                'front':front,
+                'back':back,
+                }),
+                dataType: 'json',
+                async: false,
+                processData:false,
+                contentType:'application/json',
+                success:function(data){ 
+                       
+                        console.log(data)
+                        eid = data._id
+                },
+                error:function(e){
+                    
+                        alert("error");
+                        console.log(e)
+                
+                }
+            })
+            console.log("eid="+eid)
+            if(eid==""||eid==null){
+                alert("eid 为空")
+            }
+            // -----------------更新eid到关系表中
+            $('#eid').val(eid)
+            // ----------------------添加eid到数据表中
+            var form= new FormData(document.querySelector("#edit_form"));
+            //添加card_type传输
+            var string_code = $("#edit_card h2").html()
+            // 正则匹配 如果是相同的id号则重复检索
+            var regexp2 = /[0-9]+/g 
+            var card_id =string_code.match(regexp2)[0]
+            // var card_type = $('#active_button_raw .btn-primary')[0].href.match('/\/.*\/(.*)')[1]
+            card_type = sessionStorage.getItem('card_type')
+            // form.append('card_type',card_type)
+            form.append('card_type',card_type)
+            form.append('type',card_type)
+            form.append('eid',eid)
+            form.append('back',back)
+            form.append('card_id',data_es.card.id)
+            form.append('img','')
+            $.ajax({
+                url:"{{ url_for('edit_card') }}",
+                type:"post",
+                data:form,
+                dataType: 'json',
+                async:false,
+                processData:false,
+                contentType:false,
+                success:function(data){
+                        
+                        $('h3.text-center').html($('#edit_card input.form-control').val())
+                        $('div pre code').html($('#edit_card textarea.form-control').val())
+                        $(' .largerText').html($('#edit_card textarea.form-control').val())
+                        $('.cardBack .frontText').html($('#edit_card textarea.form-control').val())
+                        $(".alert-success").toggle()
+                        
+                        setTimeout(
+                            function(){
+                                $(".alert-success").toggle()
+                            },2000
+                        );
+                        if(data.cards_total_number==2){
+                            alert("剩余抽认卡不可再删除、编辑、或者标记为熟悉！！！！")
+                        }
+                        
+                
+                        
+                },
+                error:function(e){
+                        alert("error");
+                }
+            })
+            //拼接json数据给elasticsearch 不经过中间层了。
+
+        }
+
+       // 加入检索功能,智能推荐
+       search_val  = data_es.card.front+ data_es.card.back
+       search(search_val)
+
     }
     /**标记认识这张抽认卡*/
     function mark_know(){
@@ -1061,6 +1187,63 @@ document.addEventListener('DOMContentLoaded', function() {
         })
 
     }
+// 搜索、检索、查询
+    function search(search_param){
+        
+        if(search_param==""||search_param==null||search_param==undefined){
+            search_val = $('.searchCard input').val()
+        }else{
+            search_val = search_param
+        }
+
+        $.ajax({
+            url:"http://39.106.226.131:9200/users/_search",
+            type:"POST",
+            data:JSON.stringify({
+                    "query": {
+                    "multi_match": {
+                    "fields":[ "front", "back" ],
+                    "query":search_val ,
+                    "fuzziness": "AUTO"
+                    }
+                }
+            }),
+            dataType: 'json',
+            processData:false,
+            contentType:"application/json",
+            success:function(data){
+                    console.log(data)
+                    // 得到数据总数
+                  //  data.hits.hits.length
+                    // 渲染div数据
+                  //  data.hits.hits[0]._source.front
+                  //  data.hits.hits[0]._source.back
+                    //元素清空
+                    $(".searchContext").empty()
+                    var u = $(".searchContext").append("<ul>");//外层循环添加ul到div内，且赋予了一个变量
+                    for(var i=0 ;i<data.hits.hits.length;i++){
+                               
+                        u.append('<div class=".divli" style="margin: 0 auto;"><li>'+data.hits.hits[i]._source.front+'<hr><div class="hiddenli" >'+data.hits.hits[i]._source.back+'<div></li></div>');//内层循环追加li
+                       
+                    }
+                        $(".searchContext").append("</ul>");        //外层循环添加ul结束标志到div内
+            },
+            error:function(e){
+                    console.log(e)
+                    alert("error,请联系管理员");
+            }
+        })
+    }
+
+
+
+
+
+
+
+
+
+    
     
     </script>
     <style>
@@ -1081,5 +1264,61 @@ document.addEventListener('DOMContentLoaded', function() {
         #link_delete_card {
             top:52px;
         }
+        .input-group-append {
+    
+            float: right;
+            position: absolute;
+            top: 0px;
+            right: 0px;
+            z-index: 3;
+            
+        }
+        .input-group {
+           width: 30%;
+            margin: 0 auto;
+        }
+        
+        .searchContext {
+            width:500px;
+         
+            margin: 0 auto;
+            margin-top: 10px;
+            
+        }
+        
+        .searchContext div{
+         
+           
+            
+        }
+        .searchContext hr {
+            border: solid
+        }
+        
+        .\.divli li:hover {
+            cursor: pointer;
+        }
+        .\.divli li:hover .hiddenli {
+           display: block;
+           background-color: gray;
+            
+        }
+        
+        .hiddenli {
+            display: none ;
+            position: relative;
+            left: 0px;
+           
+           
+        }
+        .\.divli {
+            position: relative;
+        }
+        .searchContext {
+            position: absolute;
+            top: 90px;
+            right: -300px;
+        }
+        
     </style>
 {% endblock %}
