@@ -478,7 +478,7 @@ document.addEventListener('DOMContentLoaded', function() {
             a.readAsDataURL(blob);
         }
         tinymce.init({
-            selector: '#add_back',
+            selector: '#edit_back',
             language:'zh_CN',//注意大小写
             plugins:  [
             "advlist autolink lists link image charmap print preview hr anchor pagebreak",
@@ -543,7 +543,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         tinymce.init({
-            selector: '#edit_back',
+            selector: '#add_back',
             language:'zh_CN',//注意大小写
             plugins:  [
             "advlist autolink lists link image charmap print preview hr anchor pagebreak",
@@ -553,7 +553,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ],
             toolbar: 'image',
             paste_data_images: true,
-            paste_preprocess: function(plugin, args) {
+            paste_preprocess: function(plugin, args) { 
                 //如果是粘贴的图片，以此种特定字符开头的进行url替换
                 if(args.content.startsWith("<img src=\"blob:http://localhost")){
                     args.content = content  
@@ -922,6 +922,7 @@ document.addEventListener('DOMContentLoaded', function() {
             processData:false,
             async:false,
             contentType:'application/json',
+            // ----------------------------根据类型随机检索
             success:function(data){
                 var string_code = $("#edit_card h2").html()
                 // 正则匹配 如果是相同的id号则重复检索
@@ -941,19 +942,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     data_es.card.uid = uid
                     //点击下一页，如果是图片添加图片输出展示
-                    if(data.card.img!=null){
+                    if(data.card.back.indexOf("data:image/png;base64") == 0){
                         $('#eid').val(data.card.eid)
                         $('h3.text-center').html(data.card.front)
                         $('#edit_card input.form-control ').val(data.card.front)
                         $("#edit_card h2").html("编辑抽认卡 #"+data.card.id)
                         $('#card_id').val(data.card.id)
-                        card_img = '<img src="' + data.card.img + '" class="upload-image">'
+                        card_img = '<img src="' + data.card.back + '" class="upload-image">'
                         back_card_img.innerHTML = card_img
-                        edit_img.innerHTML = card_img
+                        textarea = "<textarea name='back' class='form-control' id='edit_back' placeholder='back of card' rows='12'>"+card_img+" </textarea>"
+                        edit_img.innerHTML = textarea
+                        // edit_back.innerHTML  = card_img
                         //
                         data_es = data
                         
+                        
                     }else{
+                       
                         $('#eid').val(data.card.eid)
                         $('h3.text-center').html(data.card.front)
                         $('#edit_card input.form-control ').val(data.card.front)
@@ -970,9 +975,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         //点击下一页如果是文字则返回文本textarea标签
                         textarea = "<textarea name='back' class='form-control' id='edit_back' placeholder='back of card' rows='12'>"+data.card.back+" </textarea>"
                         edit_img.innerHTML = textarea
+                        //edit_back.innerHTML  = data.card.back
+
+                    }
                         // 需要重新渲染该textarea为tiny
+                        tinyMCE.remove();
+                    
                         tinymce.init({
-                            selector: '#edit_back',
                             selector: '#add_back',
                             language:'zh_CN',//注意大小写
                             plugins:  [
@@ -1002,7 +1011,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 // alert(7)
                             },
                             images_dataimg_filter: function(img) {
-
+                
                                 //可以在这里把文件上传，使用全局参数保存路径，最后在处理的时候替换img.src实现
                                 var base64  = img.src.split(",")[1]
                                 var timestamp=new Date().getTime()
@@ -1030,14 +1039,81 @@ document.addEventListener('DOMContentLoaded', function() {
                                     }
                                 })
                                 return !img.hasAttribute('internal-blob');  // blocks the upload of <img> elements with the attribute "internal-blob".
-                            },
+                              },
                             images_upload_handler: function (blobInfo, success, failure) {
-                            // var xhr, formData;
+                               // var xhr, formData;
                                 // alert(1)
-                            
+                               
                             }
                         });
-                    }
+                        // ----------------------------------  渲染到编辑窗口
+                        tinymce.init({
+                            selector: '#edit_back',
+                            language:'zh_CN',//注意大小写
+                            plugins:  [
+                            "advlist autolink lists link image charmap print preview hr anchor pagebreak",
+                            "searchreplace wordcount visualblocks visualchars code fullscreen",
+                            "insertdatetime media nonbreaking save table contextmenu directionality",
+                            "emoticons template paste textcolor colorpicker textpattern code"
+                            ],
+                            toolbar: 'image',
+                            paste_data_images: true,
+                            paste_preprocess: function(plugin, args) { 
+                                //如果是粘贴的图片，以此种特定字符开头的进行url替换
+                                if(args.content.startsWith("<img src=\"blob:http://localhost")){
+                                    args.content = content  
+                                }
+                                console.log("past_preprocess:"+args.content)
+                                
+                            },
+                            images_upload_credentials: true,
+                            images_reuse_filename: true,
+                            image_advtab: true, // IMAGE ADVANCED TAB
+                            images_upload_base_path: 'files',
+                            images_upload_url: 'doFileUpload.asp',
+                            automatic_uploads: true,
+                            file_picker_types: 'file, image, media',
+                            file_picker_callback: function(callback, value, meta) {
+                                // alert(7)
+                            },
+                            images_dataimg_filter: function(img) {
+                
+                                //可以在这里把文件上传，使用全局参数保存路径，最后在处理的时候替换img.src实现
+                                var base64  = img.src.split(",")[1]
+                                var timestamp=new Date().getTime()
+                                var imgname = timestamp+'.jpg'
+                                
+                                $.ajax({
+                                    url:"https://gitee.com/api/v5/repos/li521miao/images/contents/"+imgname,
+                                    type:"post",
+                                    data:'{"access_token":"199bec3847cb284ca03f139970f7b691","content":"'+base64+'","message":"upload for images"}',
+                                    dataType: 'json',
+                                    processData:false,
+                                    async: false,
+                                    contentType:"application/json;charset=UTF-8",
+                                    success:function(data){
+                                        imgSrc = data.content.download_url
+                                        
+                                        // 3------------------返回图床图片的url地址替换。数据库保存到是图片地址而不是图片二进制文件，提高访问速度。异步请求导致数据问题，解决方案，异步转同步：async: false,
+                                        content="<img src ='"+imgSrc+"' />"
+                                        console.log("upload:"+content)
+                                    },
+                                    error:function(e){
+                                            alert("error");
+                                            console.log(e)
+                                            
+                                    }
+                                })
+                                return !img.hasAttribute('internal-blob');  // blocks the upload of <img> elements with the attribute "internal-blob".
+                              },
+                            images_upload_handler: function (blobInfo, success, failure) {
+                               // var xhr, formData;
+                                // alert(1)
+                               
+                            }
+                        });
+                        // 需要重新渲染该textarea为tiny
+                        
 
                     
                 }
@@ -1048,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert("error");
             }
         })
-        // todo 需要添加逻辑，如果数据库中有,es中没有。
+      
         if(eid==""||eid == null){
             //---------数据刷到eid中，然后更新eid id号到关系数据库中
 
@@ -1144,7 +1220,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
        // 加入检索功能,智能推荐
-       search_val  = data_es.card.front+ data_es.card.back
+       search_val  = data_es.card.front
        search(search_val)
 
     }
@@ -1300,7 +1376,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         .\.divli li:hover .hiddenli {
            display: block;
-           background-color: gray;
+           background-color: white;
             
         }
         
