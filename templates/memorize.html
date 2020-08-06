@@ -1057,14 +1057,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // 需要重新渲染该textarea为tiny
     }
     /**下一张 抽认卡、下一页**/
-    function next_card(){
+    function next_card(cardId){
         uid = sessionStorage.getItem('uid')
         var eid = ""
+        var card_id = ""
+        if(cardId != undefined){
+            card_id = cardId
+        }
         var data_es = {card:{id:"",front:"",back:"",uid:""}}
         $.ajax({
             url:"http://localhost:8088/"+sessionStorage.getItem('card_type'),
             type:"POST",
-            data:JSON.stringify({'uid':uid}),
+            data:JSON.stringify({'uid':uid,'card_id':card_id}),
             dataType: 'json',
             processData:false,
             async:false,
@@ -1275,7 +1279,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
        // 加入检索功能,智能推荐、需要减少检索词
        search_val  = data_es.card.front
-       search(search_val)
+       if(card_id==""){
+        search(search_val)
+    }
 
     }
     /**标记认识这张抽认卡*/
@@ -1336,7 +1342,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     "query":search_val ,
                     "fuzziness": "AUTO"
                     }
-                }
+                },
+                "sort": {
+                    "createtime.keyword": {
+                        "order": "asc"
+                    }
+                },
             }),
             dataType: 'json',
             processData:false,
@@ -1353,7 +1364,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     var u = $(".searchContext").append("<ul>");//外层循环添加ul到div内，且赋予了一个变量
                     for(var i=0 ;i<data.hits.hits.length;i++){
                                
-                        u.append('<div class=".divli" style="margin: 0 auto;"><li>'+data.hits.hits[i]._source.front+'<hr><div class="hiddenli" >'+data.hits.hits[i]._source.back+'<div></li></div>');//内层循环追加li
+                     //   u.append('<div class=".divli" style="margin: 0 auto;"><li onclick="next_card('+data.hits.hits[i]._source.sqlId+')">'+data.hits.hits[i]._source.front+'<hr><div class="hiddenli" >'+data.hits.hits[i]._source.back+'<div></li></div>');//内层循环追加li
+                        u.append('<div class=".divli" style="margin: 0 auto;"><li onclick="next_card('+data.hits.hits[i]._source.sqlId+')">'+data.hits.hits[i]._source.front+'</li></div>');//内层循环追加li
                        
                     }
                         $(".searchContext").append("</ul>");        //外层循环添加ul结束标志到div内

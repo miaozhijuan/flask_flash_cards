@@ -331,6 +331,9 @@ def memorize(card_type, card_id,uid):
 def json_code(card_id=None):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
+    if(request.json['card_id']!=''):
+        card_id = request.json['card_id']
+    
     # return json_memorize("code", card_id,request.get_json()['uid'])
     return json_memorize("code", card_id,request.json['uid'])
 
@@ -339,6 +342,8 @@ def json_code(card_id=None):
 def json_general(card_id=None):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
+    if(request.json['card_id']!=''):
+        card_id = request.json['card_id']
     # return json_memorize("general", card_id,request.get_json()['uid'])
     return json_memorize("general", card_id,request.json['uid'])
 
@@ -417,7 +422,7 @@ def get_card_by_id(card_id):
 
     query = '''
       SELECT
-        id, type, front, back, known
+        id, type, front, back, known, img,eid
       FROM cards
       WHERE
         id = ?
