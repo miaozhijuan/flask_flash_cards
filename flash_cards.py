@@ -376,7 +376,7 @@ def json_memorize(card_type, card_id,uid):
     d_row['back'] = card['back']
     d_row['known'] = card['known']
     d_row['img'] = card['img']
-    d_row['eid'] = card['eid']
+    d_row['eid'] = str(card['eid'])
 
     # 获取 当前类别，当前用户的未markknow的数据总数
     db = get_db()
