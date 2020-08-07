@@ -805,7 +805,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     processData:false,
                     contentType:'application/json',
                     success:function(data){ 
-                            alert(data)
                             console.log(data)
                             eid = data._id
                     },
@@ -839,7 +838,7 @@ document.addEventListener('DOMContentLoaded', function() {
      function add_ajaxForm(){
         var form= new FormData(document.querySelector("#add_form"));
         console.log(form.toString());
-
+        var card_id = ""
         // ---------------------------获取eid 
         
         var eid = ''
@@ -861,7 +860,6 @@ document.addEventListener('DOMContentLoaded', function() {
             processData:false,
             contentType:'application/json',
             success:function(data){ 
-                    alert(data)
                     console.log(data)
                     eid = data._id
             },
@@ -883,6 +881,7 @@ document.addEventListener('DOMContentLoaded', function() {
             url:"{{ url_for('ajax_add_card') }}",
             type:"post",
             data:form,
+            async: false,
             dataType: 'json',
             processData:false,
             contentType:false,
@@ -895,7 +894,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     $(' .largerText').html($('#edit_card textarea.form-control').val())
                     $(".alert-success").toggle()
-                    var card_id = data.lastrowid
+                    card_id = data.lastrowid
                     var flag_message = '编辑抽认卡 #'+card_id
                     $("#edit_card h2").html(flag_message)
                     $("#card_id").val(card_id)
@@ -916,7 +915,34 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         //拼接json数据给elasticsearch 不经过中间层了。
-       
+        //--------------------用添加得到的sqlid号，更新es中的sqlid号
+         // 添加内容到elasticsearch,加入知识图谱功能,后台检索平台
+         if($('#eid').val()!=""){
+                
+            $.ajax({
+                url:"http://39.106.226.131:9200/users/_update/"+$('#eid').val(),
+                type:"post",
+                data:JSON.stringify({
+                        "doc":{
+                            'sqlId':card_id,
+                            }
+                      }),
+                dataType: 'json',
+                processData:false,
+                contentType:'application/json',
+                success:function(data){ 
+                        console.log(data)
+                        eid = data._id
+                },
+                error:function(e){
+                    
+                        alert("error");
+                        console.log(e)
+                
+                }
+            })
+        }
+
 
     }   
     function activeTinyMce(){
@@ -1279,8 +1305,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
        // 加入检索功能,智能推荐、需要减少检索词
        search_val  = data_es.card.front
+       // --------控制从list列表进入的不进行随机查询
+       // ========正则表达式，截取冒号前的字符作为检索标识。
+       var reg = /.*(：|:)/g
        if(card_id==""){
-        search(search_val)
+           if(search_val.match(reg)!=null){
+               search_val = search_val.match(reg)[0].substr(0,search_val.match(reg)[0].length-1)
+               search(search_val)
+           }
     }
 
     }
@@ -1331,23 +1363,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }else{
             search_val = search_param
         }
-
+        
         $.ajax({
             url:"http://39.106.226.131:9200/users/_search",
             type:"POST",
             data:JSON.stringify({
                     "query": {
                     "multi_match": {
-                    "fields":[ "front", "back" ],
+                    "fields":[ "front"], // [ "front","back"]
                     "query":search_val ,
                     "fuzziness": "AUTO"
                     }
                 },
-                "sort": {
+                "sort": [{
                     "createtime.keyword": {
+                        "order": "desc"
+                    }
+                },{
+                    "_score": {
                         "order": "asc"
                     }
-                },
+                }]
             }),
             dataType: 'json',
             processData:false,
