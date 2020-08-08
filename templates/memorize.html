@@ -154,120 +154,152 @@
         </div>
     </div>
 
-    <div id='edit_card' class="well" style="display: none;">
-        <h2>编辑抽认卡  #{{ card.id }}</h2>
-        <form id="edit_form" method="post" class="cardForm">
-
-            <div class="form-group">
-                <label for="general" class="btn btn-default btn-lg">日常问题 &nbsp;
-                    <input type="radio" name="type" value="1"
-                           id="general" {{ "checked" if (card.type == 1) else "" }} />
-                </label>
-                <label for="code" class="btn btn-default btn-lg">代码片段 &nbsp;
-                    <input type="radio" name="type" value="2" id="code" {{ "checked" if (card.type == 2) else "" }} />
-                </label>
-            </div>
-            <div class="form-group">
-                <label for="front">抽认卡正面</label>
-                <input type="text" name="front" id="front" class="form-control" value="{{ card.front|e }}">
-            </div>
-            <div class="form-group">
-                <label for="back">抽认卡背面</label>
-                <div id="edit_img"><textarea name="back"
-                          class="form-control"
-                          id="edit_back"
-                          placeholder="back of card"
-                          rows="12">{{ card.back|e }}</textarea></div>
-                <input id="uid_edit" name="uid" type="hidden" />
-                <input id="eid" name="eid" type="hidden" />
-                <!-- eid加入编辑中 -->
-            </div>
-            <div class="row">
-                <div class="col-xs-6">
-                    <div class="checkbox">
-                        <label>
-                            <input type="checkbox" name="known"
-                               value="1" {{ "checked" if (card.known == 1) else "" }} /> Known
-                        </label>
-                    </div>
-                </div>
-                <div class="col-xs-6 text-right" onclick="delete_card()">
-                    <a  class="btn btn-danger btn-xs">
-                        <i class="fa fa-trash"></i>
-                        永久移除该抽认卡
-                    </a>
-                </div>
-            </div>
-
-            <hr />
-            <div class="form-group">
-                <input id="card_id" type="hidden" name="card_id" value="{{ card.id|e }}" />
-                <input id="card_img_save" type="hidden" name="img" value="" />
-                <button type="button" class="saveButton btn btn-lg btn-primary" onclick="edit_save_card()">保存该抽认卡</button>
-            </div>
-        </form>
-    </div>
-    
-    <div id="add_card" class="well editPanel" style="display: none;">
-        <h2>添加抽认卡</h2>
-        <form id="add_form"  method="post" class="cardForm">
-            <div class="form-group">
-                <label for="general" class="toggleButton btn btn-default btn-lg">日常问题 &nbsp;
-                    <input type="radio" name="type" value="1" id="general"/>
-                </label>
-                <label for="code" class="toggleButton btn btn-default btn-lg">代码片段 &nbsp;
-                    <input type="radio" name="type" value="2" id="code"/>
-                </label>
-            </div>
-            <div class="form-group fieldFront">
-                <label for="front">抽认卡正面</label>
-                <input type="text" name="front" id="front" class="form-control">
-            </div>
-            <div class="form-group fieldBack">
-                <label for="back">抽认卡背面</label>
-               
-                <ul id="myTab" class="nav nav-tabs">
-                    <li class="active">
-                        <a href="#home" data-toggle="tab">
-                             富文本编辑
-                        </a>
-                    </li>
-                    <li><a href="#ios" data-toggle="tab">markdown编辑</a></li>
-                    
-                </ul>
-                <div id="myTabContent" class="tab-content">
-                    <div class="tab-pane fade in active" id="home">
-                         <textarea name="back"
-                                          class="form-control"
-                                          id="add_back"
-                                          placeholder="back of card"
-                                          rows="12">
-                                        </textarea>
-                    </div>
-                    <div class="tab-pane fade" id="ios">
-                        <div class="wrapper">
-   
-                            <div id="vditor" style="max-width: 1000px"></div>
-                            <div id="vditorComments"></div>
-                        
+<!--  -->
+<div class="modal fade"  tabindex="-1" id="mymodal">
+    <div class="modal-dialog" style="width:1000px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <!-- <h4 class="modal-title">编辑本条目</h4> -->
+            </div>        
+            <div class="modal-body">
+                <div id='edit_card' class="well" >
+                    <h2>编辑抽认卡  #{{ card.id }}</h2>
+                    <form id="edit_form" method="post" class="cardForm">
+            
+                        <div class="form-group">
+                            <label for="general" class="btn btn-default btn-lg">日常问题 &nbsp;
+                                <input type="radio" name="type" value="1"
+                                       id="general" {{ "checked" if (card.type == 1) else "" }} />
+                            </label>
+                            <label for="code" class="btn btn-default btn-lg">代码片段 &nbsp;
+                                <input type="radio" name="type" value="2" id="code" {{ "checked" if (card.type == 2) else "" }} />
+                            </label>
                         </div>
-
-                    </div>
-                    
+                        <div class="form-group">
+                            <label for="front">抽认卡正面</label>
+                            <input type="text" name="front" id="front" class="form-control" value="{{ card.front|e }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="back">抽认卡背面</label>
+                            <div id="edit_img"><textarea name="back"
+                                      class="form-control"
+                                      id="edit_back"
+                                      placeholder="back of card"
+                                      rows="12">{{ card.back|e }}</textarea></div>
+                            <input id="uid_edit" name="uid" type="hidden" />
+                            <input id="eid" name="eid" type="hidden" />
+                            <!-- eid加入编辑中 -->
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-6">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" name="known"
+                                           value="1" {{ "checked" if (card.known == 1) else "" }} /> Known
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-xs-6 text-right" onclick="delete_card()">
+                                <a  class="btn btn-danger btn-xs">
+                                    <i class="fa fa-trash"></i>
+                                    永久移除该抽认卡
+                                </a>
+                            </div>
+                        </div>
+            
+                        <hr />
+                        <div class="form-group">
+                            <input id="card_id" type="hidden" name="card_id" value="{{ card.id|e }}" />
+                            <input id="card_img_save" type="hidden" name="img" value="" />
+                            <button type="button" class="saveButton btn btn-lg btn-primary" onclick="edit_save_card()">保存该抽认卡</button>
+                        </div>
+                    </form>
                 </div>
-
-                        <div id="preview" ></div>
-                        <input id="img" name="img" type="hidden"/>
-                        <input id="uid" name="uid" type="hidden"/>
-                        <input id="edit_eid" name="eid" type="hidden" value="{{ card.eid }}"/>
-                        
-                          <p id="log"></p>
+                
             </div>
-            <div class="form-group">
-                <button type="button" onclick="add_form()" class="saveButton btn btn-lg btn-primary">保存</button>
-            </div>
-        </form>
+        </div>
     </div>
+</div>
+<!--  -->
+
+<!--  -->
+  
+<div class="modal fade"  tabindex="-1" id="dialog_add_card">
+    <div class="modal-dialog" style="width:1000px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <!-- <h4 class="modal-title">编辑本条目</h4> -->
+            </div>        
+            <div class="modal-body">
+                <div id="add_card" class="well editPanel" >
+                    <h2>添加抽认卡</h2>
+                    <form id="add_form"  method="post" class="cardForm">
+                        <div class="form-group">
+                            <label for="general" class="toggleButton btn btn-default btn-lg">日常问题 &nbsp;
+                                <input type="radio" name="type" value="1" id="general"/>
+                            </label>
+                            <label for="code" class="toggleButton btn btn-default btn-lg">代码片段 &nbsp;
+                                <input type="radio" name="type" value="2" id="code"/>
+                            </label>
+                        </div>
+                        <div class="form-group fieldFront">
+                            <label for="front">抽认卡正面</label>
+                            <input type="text" name="front" id="front" class="form-control">
+                        </div>
+                        <div class="form-group fieldBack">
+                            <label for="back">抽认卡背面</label>
+                           
+                            <ul id="myTab" class="nav nav-tabs">
+                                <li class="active">
+                                    <a href="#home" data-toggle="tab">
+                                         富文本编辑
+                                    </a>
+                                </li>
+                                <li><a href="#ios" data-toggle="tab">markdown编辑</a></li>
+                                
+                            </ul>
+                            <div id="myTabContent" class="tab-content">
+                                <div class="tab-pane fade in active" id="home">
+                                     <textarea name="back"
+                                                      class="form-control"
+                                                      id="add_back"
+                                                      placeholder="back of card"
+                                                      rows="12">
+                                                    </textarea>
+                                </div>
+                                <div class="tab-pane fade" id="ios">
+                                    <div class="wrapper">
+               
+                                        <div id="vditor" style="max-width: 1000px"></div>
+                                        <div id="vditorComments"></div>
+                                    
+                                    </div>
+            
+                                </div>
+                                
+                            </div>
+            
+                                    <div id="preview" ></div>
+                                    <input id="img" name="img" type="hidden"/>
+                                    <input id="uid" name="uid" type="hidden"/>
+                                    <input id="edit_eid" name="eid" type="hidden" value="{{ card.eid }}"/>
+                                    
+                                      <p id="log"></p>
+                        </div>
+                        <div class="form-group">
+                            <button type="button" onclick="add_form()" class="saveButton btn btn-lg btn-primary">保存</button>
+                        </div>
+                    </form>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+<!--  -->
+    
 <!-- 检索抽认卡、搜索、查询 -->
     <div class="searchCard"> 
         <div class="input-group mb-3">
@@ -482,6 +514,7 @@ document.addEventListener('DOMContentLoaded', function() {
         tinymce.init({
             selector: '#edit_back',
             language:'zh_CN',//注意大小写
+            height: 450,
             plugins:  [
             "advlist autolink lists link image charmap print preview hr anchor pagebreak",
             "searchreplace wordcount visualblocks visualchars code fullscreen",
@@ -546,6 +579,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         tinymce.init({
             selector: '#add_back',
+            height: 450,
             language:'zh_CN',//注意大小写
             plugins:  [
             "advlist autolink lists link image charmap print preview hr anchor pagebreak",
@@ -631,7 +665,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             // 此时file就是我们的剪切板中的图片对象
             // 如果需要预览，可以执行下面代码
-            $('#add_card #add_back').toggle()
+            // $('#add_card #add_back').toggle()
             var reader = new FileReader()
             reader.onload = function(event) {
                 console.log(event.target.result)
@@ -648,7 +682,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         $(".alert-success").toggle()
         function edit_card(){
-         $("#edit_card").toggle()
+         //$("#edit_card").toggle()
+         $("#mymodal").modal()
+         
          
         }
         /**抽认卡ajax删除、删除抽认卡*/
@@ -710,8 +746,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         }
         function add_card(){
-        
-         $("#add_card").toggle()
+        $("#dialog_add_card").modal()
+        //
+        // $("#add_card").toggle()
          // 清空操作
          $('.fieldFront .form-control').val('')
          //
@@ -731,7 +768,7 @@ document.addEventListener('DOMContentLoaded', function() {
             $('#uid_edit').val(sessionStorage.getItem('uid'))
             $('#edit_eid').val($('#eid').val())
             ajaxForm()
-            $("#edit_card").toggle()
+           // $("#edit_card").toggle()
 
         }
         /**修改保存抽认卡，编辑抽认卡**/
@@ -826,7 +863,7 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#add_back').val(tinyMCE.activeEditor.getContent())
         $('#uid').val(sessionStorage.getItem('uid'))
         add_ajaxForm()
-        $("#add_card").toggle()
+       // $("#add_card").toggle()
         // 当抽记页面隐藏，添加完就显示该页面
         if($(".memorizePanel").is(":hidden")){
             $('.memorizePanel').toggle()
@@ -846,6 +883,7 @@ document.addEventListener('DOMContentLoaded', function() {
         type = $('.toggleSelected input')[0].value
         front  = $('.fieldFront .form-control')[0].value
         var back = tinyMCE.activeEditor.getContent()
+        var createtime = new Date().format("Y-m-d H:i:s")
         // 添加内容到elasticsearch,加入知识图谱功能,后台检索平台
         $.ajax({
             url:"http://39.106.226.131:9200/users/_doc",
@@ -854,6 +892,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'type':type,
             'front':front,
             'back':back,
+            'createtime':createtime,
             }),
             dataType: 'json',
             async: false,
@@ -951,6 +990,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
         tinymce.init({
             selector: '#add_back',
+            height: 450,
             language:'zh_CN',//注意大小写
             plugins:  [
             "advlist autolink lists link image charmap print preview hr anchor pagebreak",
@@ -1017,6 +1057,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // ----------------------------------  渲染到编辑窗口
         tinymce.init({
             selector: '#edit_back',
+            height: 450,
             language:'zh_CN',//注意大小写
             plugins:  [
             "advlist autolink lists link image charmap print preview hr anchor pagebreak",
@@ -1159,6 +1200,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                         tinymce.init({
                             selector: '#add_back',
+                            height: 450,
                             language:'zh_CN',//注意大小写
                             plugins:  [
                             "advlist autolink lists link image charmap print preview hr anchor pagebreak",
@@ -1225,6 +1267,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         // ----------------------------------  渲染到编辑窗口
                         tinymce.init({
                             selector: '#edit_back',
+                            height: 450,
                             language:'zh_CN',//注意大小写
                             plugins:  [
                             "advlist autolink lists link image charmap print preview hr anchor pagebreak",
@@ -1370,7 +1413,7 @@ document.addEventListener('DOMContentLoaded', function() {
             data:JSON.stringify({
                     "query": {
                     "multi_match": {
-                    "fields":[ "front"], // [ "front","back"]
+                    "fields":[ "front"], // multi_match:{"fields"[ "front","back"]
                     "query":search_val ,
                     "fuzziness": "AUTO"
                     }
@@ -1381,7 +1424,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 },{
                     "_score": {
-                        "order": "asc"
+                        "order": "desc"
                     }
                 }]
             }),
