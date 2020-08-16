@@ -121,7 +121,9 @@
                             sessionStorage.setItem('uid',data.data.uid)
                             sessionStorage.setItem('token',data.data.token)
                             window.location.replace("http://localhost:8088/login?uid="+data.data.uid);
+                           // window.location.replace("http://192.168.0.42:8088/login?uid="+data.data.uid);
                             window.location.href = "http://localhost:8088/login?uid="+data.data.uid;
+                          //  window.location.href = "http://192.168.0.42:8088/login?uid="+data.data.uid;
                             
                             // 跳转 记录两个数据 token: "c65570b8-a1fd-4617-91c1-d30b77a35bab" uid: 1513393
                             // uid 用来关联查询，token用来进行调用验证过期session等信息。 保存到vuex中？
