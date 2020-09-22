@@ -1412,11 +1412,9 @@ document.addEventListener('DOMContentLoaded', function() {
             type:"POST",
             data:JSON.stringify({
                     "query": {
-                    "multi_match": {
-                    "fields":[ "front"], // multi_match:{"fields"[ "front","back"]
-                    "query":search_val ,
-                    "fuzziness": "AUTO"
-                    }
+                        "match_phrase": {
+                            "front":search_val
+                        }
                 },
                 "sort": [{
                     "createtime.keyword": {
