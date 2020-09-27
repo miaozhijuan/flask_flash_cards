@@ -410,7 +410,7 @@ def get_card(type,uid):
       AND
         uid = ?
       ORDER BY RANDOM()
-      LIMIT 1
+      limit 1
     '''
 
     cur = db.execute(query, [type,uid])
