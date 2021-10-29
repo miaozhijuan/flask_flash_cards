@@ -5,9 +5,21 @@ from flask import Flask, request, session, g, redirect, url_for, abort, \
 from datetime import timedelta
 import json
 import collections
+from flask_cors import CORS, cross_origin
+from flask_redis import FlaskRedis
+import redis
+r1 = redis.Redis()
+r2 = redis.StrictRedis()
+redis_cli = redis.StrictRedis(host='49.234.114.74',  # 默认ip为127.0.0.1
+                      port=6379,   # 默认端口6379
+                      db=0,        # 默认数据库0
+                      password="1992A1573",) # 默认没有密码
+
 
 app = Flask(__name__)
+CORS(app)
 app.config.from_object(__name__)
+
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = timedelta(days=0, seconds=1, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0)
 # Load default config and override config from an environment variable
 app.config.update(dict(
@@ -18,12 +30,10 @@ app.config.update(dict(
 ))
 app.config.from_envvar('CARDS_SETTINGS', silent=True)
 
-
 db = sqlite3.connect(app.config['DATABASE'])
 # with app.open_resource('data/schema.sql', mode='r') as f:
 #     db.cursor().executescript(f.read())
 # db.commit()
-
 
 
 def connect_db():
@@ -72,11 +82,61 @@ def index():
     else:
         return redirect(url_for('login'))
 
+@app.route('/redis',methods=['POST'])
+@cross_origin()
+def redis_test():
+    value = request.form['orderlist']
+    key = request.form['uid']+"-"+request.form['tag']
+    boolean = redis_cli.set(key,value)
+    return json.dumps({"test":"ceshi lianjie",
+        "ifSuccess":boolean
+    })
+
+@app.route('/redis_get',methods=['POST','OPTIONS'])
+@cross_origin()
+def redis_get():
+    
+    key = request.form['uid']+"-"+request.form['tag']
+    orderlist = redis_cli.get(key)
+    ifExist = orderlist != None
+    if ifExist:
+        orderlist = str(orderlist, encoding='utf-8')
+    jsonobj = {'test':'lianjie','ifExist':ifExist,'orderlist':orderlist}
+    return json.dumps(jsonobj)
+
+@app.route('/redis_label',methods=['POST','OPTIONS'])
+@cross_origin()
+def redis_label():
+    
+    db = get_db()
+    # 修改为只要大于一个的label就显示出来
+    query = '''
+        select count(1) as count,substr(cd.front,0,instr(cd.front,'：')) as keyword from cards cd group by substr(cd.front,0,instr(cd.front,'：'))
+        HAVING count(1) > 0 and cd.uid = ?
+        UNION
+        select count(1) as count, substr(cd.front,0,instr(cd.front,':')) as keyword from cards cd group by substr(cd.front,0,instr(cd.front,':'))
+        HAVING count(1) > 0 and cd.uid = ?
+    '''
+    cur = db.execute(query,[request.form['uid'],request.form['uid']])
+    cards = cur.fetchall()
+    jsonArr = []
+    for row in cards:
+        jsonv = {}
+        jsonv['name'] = row['keyword']
+        jsonv['value'] = row['count']
+        jsonArr.append(jsonv)
+    
+    return json.dumps(jsonArr)
+
+
+
+
+
 
 @app.route('/cards')
 def cards():
     if not session.get('logged_in'):
-        return redirect(url_for('login'))
+        return render_template('login.html', error=None)
     db = get_db()
     query = '''
         SELECT id, type, front, back, known
@@ -129,16 +189,37 @@ def add_card():
 
 @app.route('/ajax_add_card', methods=['POST'])
 def ajax_add_card():
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
     db = get_db()
-    db.execute('INSERT INTO cards (type, front, back) VALUES (?, ?, ?)',
-               [request.form['type'],
-                request.form['front'],
-                request.form['back']
-                ])
-    db.commit()
-    return json.dumps(request.form.to_dict());
+    if(request.form['img']!=''):
+        db.execute('INSERT INTO cards (type, front, back,img,uid,eid) VALUES (?, ?, ?,?,?,?)',
+                [request.form['type'],
+                    request.form['front'],
+                    request.form['back'],
+                    request.form['img'],
+                    request.form['uid'],
+                    request.form['eid']
+                    ])
+        db.commit()
+    else:
+        db.execute('INSERT INTO cards (type, front, back,uid,eid) VALUES (?, ?, ?,?,?)',
+                [request.form['type'],
+                    request.form['front'],
+                    request.form['back'],
+                    request.form['uid'],
+                    request.form['eid']
+                    ])
+        db.commit()
+    # select max(cast(id as int)) from  cards 
+    cur = db.execute('select max(cast(id as int)) from  cards where uid = ?',[request.form['uid']])
+    
+    
+
+    message = {
+        'msg':'抽认卡保存成功！',
+        'lastrowid':cur.lastrowid
+    }
+    return json.dumps(message)
+    # return json.dumps(request.form.to_dict());
 
 
 @app.route('/edit/<card_id>')
@@ -156,35 +237,72 @@ def edit(card_id):
     return render_template('edit.html', card=card)
 
 
-@app.route('/edit_card', methods=['POST'])
+@app.route('/edit_card', methods=['POST','GET'])
 def edit_card():
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
-    selected = request.form.getlist('known')
-    known = bool(selected)
+    # if not session.get('logged_in'):
+    #     return redirect(url_for('login'))
+    selected = request.form.getlist('known') 
+    known = int(request.form['known'])
     db = get_db()
-    command = '''
-        UPDATE cards
-        SET
-          type = ?,
-          front = ?,
-          back = ?,
-          known = ?
-        WHERE id = ?
-    '''
-    db.execute(command,
-               [request.form['type'],
-                request.form['front'],
-                request.form['back'],
-                known,
-                request.form['card_id']
-                ])
-    db.commit()
-    # flash('抽认卡保存成功.')
-    # message = {'msg':'抽认卡保存成功.'}
-    
-    return json.dumps(request.form.to_dict())
+    if (request.form['img']!=''):
+        command = '''
+            UPDATE cards
+            SET
+            type = ?,
+            front = ?,
+            back = ?,
+            known = ?,
+            img = ?,
+            eid = ?
+            WHERE id = ?
+        '''
+        db.execute(command,
+                [request.form['type'],
+                    request.form['front'],
+                    'back',
+                    known,
+                    request.form['img'],
+                    request.form['eid'],
+                    request.form['card_id']
 
+                    ])
+        db.commit()
+    else:
+        command = '''
+            UPDATE cards
+            SET
+            type = ?,
+            front = ?,
+            back = ?,
+            known = ?,
+            eid = ?
+            WHERE id = ?
+        '''
+        db.execute(command,
+                [request.form['type'],
+                    request.form['front'],
+                    request.form['back'],
+                    known,
+                    request.form['eid'],
+                    request.form['card_id']
+                    ])
+        db.commit()
+
+
+    # if request.form['card_type'] == "json_general":
+    #     type = 1
+    # elif request.form['card_type'] == "json_code":
+    #     type = 2
+
+    # cur = db.execute('SELECT id, type, front, back, known FROM cards where type = ? AND uid = ?',[type,request.form['uid']])
+    # cards = cur.fetchall()
+    
+
+    message = {
+        'msg':'抽认卡保存成功！',
+        # 'cards_total_number':len(cards)
+    }
+    return json.dumps(message)
 
 @app.route('/delete/<card_id>')
 def delete(card_id):
@@ -196,17 +314,26 @@ def delete(card_id):
     flash('抽认卡删除成功.')
     return redirect(url_for('cards'))
 
-
+# 删除抽认卡
 @app.route('/ajax_delete',methods=['POST','GET'])
 def ajax_delete():
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
     db = get_db()
     db.execute('DELETE FROM cards WHERE id = ?', [request.get_json()['card_id']])
     db.commit()
     # flash('抽认卡删除成功.')
+    
+    # if request.get_json()['card_type'] == "json_general":
+    #     type = 1
+    # elif request.get_json()['card_type'] == "json_code":
+    #     type = 2
+
+    cur = db.execute('SELECT id, type, front, back, known FROM cards where type = ? AND uid = ?',[request.get_json()['card_type'],request.get_json()['uid']])
+    cards = cur.fetchall()
+    
+
     message = {
-        'msg':'抽认卡删除成功！'
+        'msg':'抽认卡删除成功！',
+        'cards_total_number':len(cards)
     }
     return json.dumps(message)
 
@@ -215,7 +342,7 @@ def ajax_delete():
 def general(card_id=None):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    return memorize("general", card_id)
+    return memorize("general", card_id,str(request.query_string,encoding='utf-8').split('=')[1])
 
 
 @app.route('/code')
@@ -223,10 +350,10 @@ def general(card_id=None):
 def code(card_id=None):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    return memorize("code", card_id)
+    return memorize("code", card_id,request.get_json()['uid'])
 
 
-def memorize(card_type, card_id):
+def memorize(card_type, card_id,uid):
     if card_type == "general":
         type = 1
     elif card_type == "code":
@@ -237,32 +364,45 @@ def memorize(card_type, card_id):
     if card_id:
         card = get_card_by_id(card_id)
     else:
-        card = get_card(type)
-    if not card:
-        flash("You've learned all the " + card_type + " cards.")
-        return redirect(url_for('cards'))
-    short_answer = (len(card['back']) < 75)
+        card = get_card(type,uid)
+    # if not card:
+    #     # 意味着当前类别当前用户没有抽认卡，跳转到memorize中，在里边搞判断逻辑
+    #     short_answer = (len(card['back']) < 75)
+    #     return render_template('memorize.html',
+    #                        card=card,
+    #                        card_type='json_'+card_type,
+    #                        short_answer=False)
+
+        # flash("You've learned all the " + card_type + " cards.")
+        # return redirect(url_for('cards'))
+    # short_answer = (len(card['back']) < 75)
     return render_template('memorize.html',
                            card=card,
                            card_type='json_'+card_type,
-                           short_answer=short_answer)
+                           short_answer=False)
 
 
-@app.route('/json_code')
+@app.route('/json_code',methods=['POST','GET'])
 @app.route('/json_code/<card_id>')
 def json_code(card_id=None):
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
-    return json_memorize("code", card_id)
+    if(request.json['card_id']!=''):
+        card_id = request.json['card_id']
+    
+    # return json_memorize("code", card_id,request.get_json()['uid'])
+    return json_memorize("code", card_id,request.json['uid'])
 
-@app.route('/json_general')
+@app.route('/json_general',methods=['POST','GET'])
 @app.route('/json_general/<card_id>')
+@cross_origin()
 def json_general(card_id=None):
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
-    return json_memorize("general", card_id)
+    # if not session.get('logged_in'):
+    #     return redirect(url_for('login'))
+    if(request.json['card_id']!=''):
+        card_id = request.json['card_id']
+    # return json_memorize("general", card_id,request.get_json()['uid'])
+    return json_memorize("general", card_id,request.json['uid']) 
 
-def json_memorize(card_type, card_id):
+def json_memorize(card_type, card_id,uid):
     if card_type == 'general':
         type = 1
     elif card_type == "code":
@@ -274,10 +414,18 @@ def json_memorize(card_type, card_id):
     if card_id:
         card = get_card_by_id(card_id)
     else:
-        card = get_card(type)
+        card = get_card(type,uid)
     if not card:
-        flash("你已经学完了所有日常卡片张.")
-        return redirect(url_for('cards'))
+        # flash("你已经学完了所有日常卡片张.")
+        # return redirect(url_for('cards'))
+        card_json = {
+        'card':'None',
+        'card_type':card_type,
+        'short_answer':False,
+        'cards_total_number':0
+
+        }
+        return json.dumps(card_json)
     short_answer = (len(card['back']) < 75)
 
 
@@ -287,29 +435,54 @@ def json_memorize(card_type, card_id):
     d_row['front'] = card['front']
     d_row['back'] = card['back']
     d_row['known'] = card['known']
+    d_row['img'] = card['img']
+    d_row['createtime'] = card['createtime']
+    d_row['eid'] = str(card['eid'])
+
+    # 获取 当前类别，当前用户的未markknow的数据总数
+    db = get_db()
+    cur = db.execute('SELECT id, type, front, back, known FROM cards where type = ? AND known = ? AND uid = ? ',[type,0,uid])
+    cards = cur.fetchall()
+
+    #redis
+    tag =  d_row['front'].split("：")[0] if len(d_row['front'].split("：")) > 1 else d_row['front'].split(":")[0]
+    key = uid+"-"+tag
+    ifExist = redis_cli.get(key)!=None
+    getOrders = ""
+    if ifExist:
+        getOrders = redis_cli.get(key)
+        getOrders = str(getOrders,encoding='utf-8')
+    
+    d_row['havaTagOrders'] = ifExist
+    d_row['tagIndexOrders'] = getOrders
 
     card_json = {
         'card':d_row,
         'card_type':card_type,
-        'short_answer':short_answer
+        'short_answer':short_answer,
+        'cards_total_number':len(cards),
 
     }
     return json.dumps(card_json)
 
-def get_card(type):
+def get_card(type,uid):
     db = get_db()
 
     query = '''
       SELECT
-        id, type, front, back, known
+        id, type, front, back, known, img,eid,known,createtime
       FROM cards
       WHERE
-        type = ?
+        type = ? 
+      AND 
+        known = 0
+      AND
+        uid = ?
       ORDER BY RANDOM()
-      LIMIT 1
+      limit 1
     '''
 
-    cur = db.execute(query, [type])
+    cur = db.execute(query, [type,uid])
     return cur.fetchone()
 
 
@@ -318,7 +491,7 @@ def get_card_by_id(card_id):
 
     query = '''
       SELECT
-        id, type, front, back, known
+        id, type, front, back, known, img,eid,createtime
       FROM cards
       WHERE
         id = ?
@@ -339,41 +512,47 @@ def mark_known(card_id, card_type):
     flash('抽认卡被标记为认识.')
     return redirect(url_for(card_type))
 
-@app.route('/ajax_mark_known/<card_id>/<card_type>')
-def ajax_mark_known(card_id, card_type):
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
+@app.route('/ajax_mark_known',methods=['POST','GET'])
+def ajax_mark_known():
+    # if not session.get('logged_in'):
+    #     return redirect(url_for('login'))
     db = get_db()
-    db.execute('UPDATE cards SET known = 1 WHERE id = ?', [card_id])
+    
+    db.execute('UPDATE cards SET known = 1 WHERE id = ?', [request.get_json()['card_id']])
     db.commit()
     # flash('抽认卡被标记为认识.')
+
+    # if request.get_json()['card_type'] == "json_general":
+    #     type = 1
+    # elif request.get_json()['card_type'] == "json_code":
+    #     type = 2
+
+    # cur = db.execute('SELECT id, type, front, back, known FROM cards where type = ? AND known = ? AND uid = ? ',[type,0,request.get_json()['uid']])
+    # cards = cur.fetchall()
+    
+
     message = {
-        'msg':'抽认卡被标记为认识'
+        'msg':'抽认卡标记成功！'
+        # 'cards_total_number':len(cards)
     }
     return json.dumps(message)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    error = None
-    if request.method == 'POST':
-        if request.form['username'] != app.config['USERNAME']:
-            error = '无效用户名或密码！'
-        elif request.form['password'] != app.config['PASSWORD']:
-            error = '无效用户名或密码!'
-        else:
-            session['logged_in'] = True
-            session.permanent = True  # stay logged in
-            return redirect(url_for('cards'))
-    return render_template('login.html', error=error)
+    # 只要api工厂通过了校验，就会调用session
+    session['logged_in'] = True
+    session.permanent = True  # stay logged in
+    return redirect(url_for('general',uid=str(request.query_string,encoding='utf-8').split('=')[1]))  # {{ url_for(card_type, card_id=card.id) }}
+    
 
 
 @app.route('/logout')
 def logout():
     session.pop('logged_in', None)
     flash("退出")
-    return redirect(url_for('index'))
+    return render_template('login.html', error=None)
 
 
 if __name__ == '__main__':
 
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=8000)

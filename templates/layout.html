@@ -9,6 +9,12 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='highlight-theme-github.css') }}" />
     <script src="{{ url_for('static', filename='highlight.pack.js') }}"></script>
     <script src="{{ url_for('static', filename='jquery.js') }}"></script>
+    <script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
+    <!-- 添加markdown 编辑器 vditor -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vditor@latest/dist/index.css"/>
+   
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vditor/dist/index.css" />
+    <script src="https://cdn.jsdelivr.net/npm/vditor/dist/index.min.js" defer></script> -->
 
 </head>
 <body>
@@ -48,5 +54,6 @@
     <script src="https://use.fontawesome.com/8cea844162.js"></script>
     <script src="{{ url_for('static', filename='fastclick.min.js') }}"></script>
     <script src="{{ url_for('static', filename='general.js') }}"></script>
+    <script src="{{ url_for('static', filename='date.format.js') }}"></script>
 </body>
 </html>

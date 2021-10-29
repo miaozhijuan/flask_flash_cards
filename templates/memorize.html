@@ -1,11 +1,34 @@
 {% extends "layout.html" %}
 {% block body %}
+<script>
+    // 日常问题/代码片段
+    function type_change(btn_active){
+        // 切换按钮状态
+        if(btn_active.nextElementSibling==null){
+            btn_active.previousElementSibling.className="btn btn-default"
+        }else{
+            btn_active.nextElementSibling.className="btn btn-default"
+        }
+        btn_active.className="btn btn-primary"
+        //获取当前请求类型
+        url_type = btn_active.name
+        //构建ajax请求
+        // uid = sessionStorage.getItem('uid')
+        sessionStorage.setItem('card_type',url_type)
+        //调用下一页的ajax请求，把类型改变查找下一页的方式。
+        next_card()
 
-    <div class="row">
+    }
+
+
+</script>
+
+   
+    <div id="active_button_raw" class="row">
         <div class="col-xs-12 text-center">
             <div class="btn-group btn-group-lg" role="group" aria-label="card type">
-                <a href="{{ url_for('general') }}" class="btn btn-{{ "primary" if card_type == "json_general" else "default" }}">日常问题</a>
-                <a href="{{ url_for('code') }}" class="btn btn-{{ "primary" if card_type == "json_code" else "default" }}">代码片段</a>
+                <a name="json_general" class="btn btn-{{ "primary" if card_type == "json_general" else "default" }}" onclick="type_change(this)">日常问题</a>
+                <a name="json_code" class="btn btn-{{ "primary" if card_type == "json_code" else "default" }}" onclick="type_change(this)" >代码片段</a>
             </div>
         </div>
     </div>
@@ -34,7 +57,30 @@
                         <div class="alignMiddle frontText">
                             <a  class="btn  btn-link" href="javascript:void(0);" onclick="edit_card()">编辑抽认卡</a>
                             <a id="link_add_card"  class="btn  btn-link" href="javascript:void(0);" onclick="add_card()">添加抽认卡</a>
-                            <a id="link_delete_card"  class="btn  btn-link" href="javascript:void(0);" onclick="delete_card()">删除该抽认卡</a>
+                            <a id="link_delete_card"  class="btn  btn-link" href="javascript:void(0);" data-toggle="modal" data-target="#deleteModal">删除该抽认卡</a>
+                            <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel">
+                                <div class="modal-dialog" role="document">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                                            <h4 class="modal-title" id="deleteModalLabel">确认框</h4>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form>
+                                                <div class="form-group">
+                                                    <label  class="control-label">确定要删除吗？</label>
+                                                </div>
+                                            </form>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-default" data-dismiss="modal">返回</button>
+                                            <button type="button" class="btn btn-primary" data-dismiss="modal"  onclick="delete_card()">确认</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
                             <h3 class="text-center">{{ card.front }}</h3>
                         </div>
                     </div>
@@ -43,7 +89,7 @@
             <div class="panel panel-primary cardBack">
                 <div class="panel-body">
                     <div class="alignContainer">
-                        <div class="alignMiddle frontText">
+                        <div id="back_card_img" class="alignMiddle frontText">
                             {% if card.type == 1 %}
                                 {% if short_answer %}
                                     <div class="text-center largerText">
@@ -105,129 +151,636 @@
 
         </div>
     </div>
-    <div id='edit_card' class="well" style="display: none;">
-        <h2>编辑抽认卡 #{{ card.id }}</h2>
-        <form id="edit_form" method="post" class="cardForm">
 
-            <div class="form-group">
-                <label for="general" class="btn btn-default btn-lg">日常问题 &nbsp;
-                    <input type="radio" name="type" value="1"
-                           id="general" {{ "checked" if (card.type == 1) else "" }} />
-                </label>
-                <label for="code" class="btn btn-default btn-lg">代码片段 &nbsp;
-                    <input type="radio" name="type" value="2" id="code" {{ "checked" if (card.type == 2) else "" }} />
-                </label>
-            </div>
-            <div class="form-group">
-                <label for="front">抽认卡正面</label>
-                <input type="text" name="front" id="front" class="form-control" value="{{ card.front|e }}">
-            </div>
-            <div class="form-group">
-                <label for="back">抽认卡背面</label>
-                <textarea name="back"
-                          class="form-control"
-                          id="back"
-                          placeholder="back of card"
-                          rows="12">{{ card.back|e }}</textarea>
-            </div>
-            <div class="row">
-                <div class="col-xs-6">
-                    <div class="checkbox">
-                        <label>
-                            <input type="checkbox" name="known"
-                               value="1" {{ "checked" if (card.known == 1) else "" }} /> Known
-                        </label>
-                    </div>
+<!--  -->
+<div class="modal fade"  tabindex="-1" id="mymodal">
+    <div class="modal-dialog" style="width:1000px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <!-- <h4 class="modal-title">编辑本条目</h4> -->
+            </div>        
+            <div class="modal-body">
+                <div id='edit_card' class="well" >
+                    <h2>编辑抽认卡  #{{ card.id }}</h2>
+                    <form id="edit_form" method="post" class="cardForm">
+            
+                        <div class="form-group">
+                            <label for="general" class="btn btn-default btn-lg">日常问题 &nbsp;
+                                <input type="radio" name="type" value="1"
+                                       id="general" {{ "checked" if (card.type == 1) else "" }} />
+                            </label>
+                            <label for="code" class="btn btn-default btn-lg">代码片段 &nbsp;
+                                <input type="radio" name="type" value="2" id="code" {{ "checked" if (card.type == 2) else "" }} />
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="front">抽认卡正面</label>
+                            <input type="text" name="front" id="front" class="form-control" value="{{ card.front|e }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="back">抽认卡背面</label>
+                            <div id="edit_img"><textarea name="back"
+                                      class="form-control"
+                                      id="edit_back"
+                                      placeholder="back of card"
+                                      rows="12">{{ card.back|e }}</textarea></div>
+                            <input id="uid_edit" name="uid" type="hidden" />
+                            <input id="eid" name="eid" type="hidden" />
+                            <!-- eid加入编辑中 -->
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-6">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" name="known"
+                                           value="1" {{ "checked" if (card.known == 1) else "" }} /> Known
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-xs-6 text-right" onclick="delete_card()">
+                                <a  class="btn btn-danger btn-xs">
+                                    <i class="fa fa-trash"></i>
+                                    永久移除该抽认卡
+                                </a>
+                            </div>
+                        </div>
+            
+                        <hr />
+                        <div class="form-group">
+                            <input id="card_id" type="hidden" name="card_id" value="{{ card.id|e }}" />
+                            <input id="card_img_save" type="hidden" name="img" value="" />
+                            <button type="button" class="saveButton btn btn-lg btn-primary" onclick="edit_save_card()">保存该抽认卡</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="col-xs-6 text-right" onclick="delete_card()">
-                    <a  class="btn btn-danger btn-xs">
-                        <i class="fa fa-trash"></i>
-                        永久移除该抽认卡
-                    </a>
+                
+            </div>
+        </div>
+    </div>
+</div>
+<!--  -->
+
+<!--  -->
+  
+<div class="modal fade"  tabindex="-1" id="dialog_add_card">
+    <div class="modal-dialog" style="width:1000px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <!-- <h4 class="modal-title">编辑本条目</h4> -->
+            </div>        
+            <div class="modal-body">
+                <div id="add_card" class="well editPanel" >
+                    <h2>添加抽认卡</h2>
+                    <form id="add_form"  method="post" class="cardForm">
+                        <div class="form-group">
+                            <label for="general" class="toggleButton btn btn-default btn-lg">日常问题 &nbsp;
+                                <input type="radio" name="type" value="1" id="general"/>
+                            </label>
+                            <label for="code" class="toggleButton btn btn-default btn-lg">代码片段 &nbsp;
+                                <input type="radio" name="type" value="2" id="code"/>
+                            </label>
+                        </div>
+                        <div class="form-group fieldFront">
+                            <label for="front">抽认卡正面</label>
+                            <input type="text" name="front" id="front" class="form-control">
+                        </div>
+                        <div class="form-group fieldBack">
+                            <label for="back">抽认卡背面</label>
+                           
+                            <ul id="myTab" class="nav nav-tabs">
+                                <li class="active">
+                                    <a href="#home" data-toggle="tab">
+                                         富文本编辑
+                                    </a>
+                                </li>
+                                <li><a href="#ios" data-toggle="tab">markdown编辑</a></li>
+                                
+                            </ul>
+                            <div id="myTabContent" class="tab-content">
+                                <div class="tab-pane fade in active" id="home">
+                                     <textarea name="back"
+                                                      class="form-control"
+                                                      id="add_back"
+                                                      placeholder="back of card"
+                                                      rows="12">
+                                                    </textarea>
+                                </div>
+                                <div class="tab-pane fade" id="ios">
+                                    <div class="wrapper">
+               
+                                        <div id="vditor" style="max-width: 1000px"></div>
+                                        <div id="vditorComments"></div>
+                                    
+                                    </div>
+            
+                                </div>
+                                
+                            </div>
+            
+                                    <div id="preview" ></div>
+                                    <input id="img" name="img" type="hidden"/>
+                                    <input id="uid" name="uid" type="hidden"/>
+                                    <input id="edit_eid" name="eid" type="hidden" value="{{ card.eid }}"/>
+                                    
+                                      <p id="log"></p>
+                        </div>
+                        <div class="form-group">
+                            <button type="button" onclick="add_form()" class="saveButton btn btn-lg btn-primary">保存</button>
+                        </div>
+                    </form>
                 </div>
+                
             </div>
-
-            <hr />
-            <div class="form-group">
-                <input id="card_id" type="hidden" name="card_id" value="{{ card.id|e }}" />
-                <button type="button" class="saveButton btn btn-lg btn-primary" onclick="edit_save_card()">保存该抽认卡</button>
-            </div>
-        </form>
+        </div>
     </div>
-
-    <div id="add_card" class="well editPanel" style="display: none;">
-        <h2>添加抽认卡</h2>
-        <form id="add_form" action="{{ url_for('add_card') }}" method="post" class="cardForm">
-            <div class="form-group">
-                <label for="general" class="toggleButton btn btn-default btn-lg">日常问题 &nbsp;
-                    <input type="radio" name="type" value="1" id="general"/>
-                </label>
-                <label for="code" class="toggleButton btn btn-default btn-lg">代码片段 &nbsp;
-                    <input type="radio" name="type" value="2" id="code"/>
-                </label>
+</div>
+<!--  -->
+    
+<!-- 检索抽认卡、搜索、查询 -->
+    <div class="searchCard"> 
+        <div class="input-group mb-3">
+            <input type="text" class="form-control" >
+            <div class="input-group-append" >
+              <button class="btn btn-outline-secondary" type="button" onclick="search('')">查询</button>
             </div>
-            <div class="form-group fieldFront">
-                <label for="front">抽认卡正面</label>
-                <input type="text" name="front" id="front" class="form-control">
-            </div>
-            <div class="form-group fieldBack">
-                <label for="back">抽认卡背面</label>
-                <textarea name="back"
-                          class="form-control"
-                          id="back"
-                          placeholder="back of card"
-                          rows="12"></textarea>
-            </div>
-            <div class="form-group">
-                <button type="button" onclick="add_form()" class="saveButton btn btn-lg btn-primary">保存</button>
-            </div>
-        </form>
+          </div>
+          
     </div>
+    <div class="searchContext"></div>
+    <!-- <script>
+        tinymce.init({
+            selector: '#edit_back',
+            language:'zh_CN',//注意大小写
+            
+        });
+    </script> -->
+    
+<script>
+	const addScript = (path, callback) => {
+    const scriptElement = document.createElement('script')
+    scriptElement.src = path
+    scriptElement.async = true
+    document.head.appendChild(scriptElement)
+    scriptElement.onload = () => {
+        callback()
+    }
+}
 
+const updateCode = (btnElement, code) => {
+    if (btnElement.classList.contains('btn--red')) {
+        return
+    } else {
+        const redBtnElement = document.querySelector('.btn--red')
+        if (redBtnElement) {
+            redBtnElement.classList.remove('btn--red')
+        }
+        btnElement.classList.add('btn--red')
+    }
+
+    const demoCodeElement = document.getElementById('vditorDemoCode')
+    demoCodeElement.firstElementChild.innerHTML = `<code>${code}
+</code>`
+    Vditor.highlightRender({
+        lineNumber: true,
+        enable: true
+    }, demoCodeElement)
+    Vditor.codeRender(demoCodeElement)
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var hm = document.createElement('script')
+    hm.src = 'https://hm.baidu.com/hm.js?3035c273d83b0b76e762b7397c790e84'
+    var s = document.getElementsByTagName('script')[0]
+    s.parentNode.insertBefore(hm, s)
+
+    if (document.getElementById('vditorComments')) {
+        addScript('https://cdn.jsdelivr.net/npm/vditor@3.3.2/dist/index.min.js',
+            () => {
+                const demoCodeElement = document.getElementById('vditorDemoCode')
+                if (demoCodeElement) {
+                    Vditor.highlightRender({
+                            lineNumber: true,
+                            enable: true
+                        },
+                        demoCodeElement)
+                    Vditor.codeRender(demoCodeElement)
+                }
+                if (typeof vditorScript !== 'undefined') {
+                    vditorScript()
+                }
+//                 addScript('https://cdn.jsdelivr.net/npm/vcmt@latest/dist/index.min.js',
+//                     () => {
+//                         const vcomment = new Vcomment({
+//                             id: 'vditorComments',
+//                             postId: '154963874563022',
+//                             url: 'https://hacpai.com',
+//                             userName: 'Vanessa',
+//                             currentPage: 1,
+//                             vditor: {
+//                                 hljsEnable: true,
+//                                 hljsStyle: 'github',
+//                             },
+//                             after() {
+//                                 const commentCntElement = document.getElementById(
+//                                     'commentsCount')
+//                                 document.getElementById(
+//                                     'commentCnt').innerText = commentCntElement.innerText + ' 个讨论'
+//                                 commentCntElement.nextSibling.remove()
+//                                 commentCntElement.remove()
+//                             },
+//                             error() {
+//                                 document.getElementById('comments').remove()
+//                             },
+//                         })
+// 
+//                         vcomment.render()
+//                     })
+            })
+    }
+})
+ 
+</script>
     <script>
+        var content = ''
+        function promiseRequest(url) {
+            return new Promise((resolve, reject) => {
+              var xhr = new XMLHttpRequest()
+              xhr.responseType = 'blob';  
+              xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4) {
+                  if (xhr.status === 200) {
+                    resolve(xhr.response)
+                  } else {
+                    reject(xhr.response)
+                  }
+                }
+              }
+              xhr.open('GET', url, true)
+              xhr.send(null)
+            }).catch(err => {
+              console.log(err)
+              reject(err)
+            })
+          }
+          //----------------------------------
+          function blobToDataURL(blob, callback) {
+            let reader = new FileReader()
+            reader.onload = (e) => {
+                if (callback) {
+                    callback(e.target.result)
+                }
+            }
+            reader.readAsDataURL(blob_data)
+
+        }
+
+          function promiseBlobToBase64(url) {
+            return new Promise((resolve, reject) => {
+                let reader = new FileReader()
+                reader.onload = (e) => {
+                    resolve(e.target.result)
+                }
+            reader.readAsDataURL(blob_data)
+
+              var xhr = new XMLHttpRequest()
+              xhr.responseType = 'blob';  
+              xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4) {
+                  if (xhr.status === 200) {
+                    resolve(xhr.response)
+                  } else {
+                    reject(xhr.response)
+                  }
+                }
+              }
+              xhr.open('GET', url, true)
+              xhr.send(null)
+            }).catch(err => {
+              console.log(err)
+              reject(err)
+            })
+          }
+        function sleep(numberMillis) {
+            var now = new Date();
+            var exitTime = now.getTime() + numberMillis;
+            while (true) {
+                now = new Date();
+                if (now.getTime() > exitTime)
+                return;
+                }
+        }
+
+        vditorScript = () => {
+            new Vditor('vditor', {
+              toolbarConfig: {
+                pin: true,
+              },
+              width:1300,
+              height:200,
+              counter: {
+                enable: true,
+              },
+              toolbar: [
+                'emoji',
+                'link',
+                'upload',
+                'edit-mode',
+                {
+                  name: 'more',
+                  toolbar: [
+                    'insert-after',
+                    'fullscreen',
+                    'preview',
+                    'info',
+                    'help',
+                  ],
+                },
+              ],
+            })
+          }
+        // jquery传过来数据是否为空
+        
+        sessionStorage.setItem('card_type','{{card_type}}')
+        // blob转base64
+        function blobToDataURL(blob, callback) {
+            var a = new FileReader();
+            a.onload = function (e) { callback(e.target.result); }
+            a.readAsDataURL(blob);
+        }
+        tinymce.init({
+            selector: '#edit_back',
+            language:'zh_CN',//注意大小写
+            height: 450,
+            plugins:  [
+            "advlist autolink lists link image charmap print preview hr anchor pagebreak",
+            "searchreplace wordcount visualblocks visualchars code fullscreen",
+            "insertdatetime media nonbreaking save table contextmenu directionality",
+            "emoticons template paste textcolor colorpicker textpattern code"
+            ],
+            toolbar: 'image',
+            paste_data_images: true,
+            paste_preprocess: function(plugin, args) { 
+                //如果是粘贴的图片，以此种特定字符开头的进行url替换
+                if(args.content.startsWith("<img src=\"blob:http://localhost")){
+                    args.content = content  
+                }
+                console.log("past_preprocess:"+args.content)
+                
+            },
+            images_upload_credentials: true,
+            images_reuse_filename: true,
+            image_advtab: true, // IMAGE ADVANCED TAB
+            images_upload_base_path: 'files',
+            images_upload_url: 'doFileUpload.asp',
+            automatic_uploads: true,
+            file_picker_types: 'file, image, media',
+            file_picker_callback: function(callback, value, meta) {
+                // alert(7)
+            },
+            images_dataimg_filter: function(img) {
+
+                //可以在这里把文件上传，使用全局参数保存路径，最后在处理的时候替换img.src实现
+                var base64  = img.src.split(",")[1]
+                var timestamp=new Date().getTime()
+                var imgname = timestamp+'.jpg'
+                
+                $.ajax({
+                    url:"https://gitee.com/api/v5/repos/li521miao/images/contents/"+imgname,
+                    type:"post",
+                    data:'{"access_token":"199bec3847cb284ca03f139970f7b691","content":"'+base64+'","message":"upload for images"}',
+                    dataType: 'json',
+                    processData:false,
+                    async: false,
+                    contentType:"application/json;charset=UTF-8",
+                    success:function(data){
+                        imgSrc = data.content.download_url
+                        
+                        // 3------------------返回图床图片的url地址替换。数据库保存到是图片地址而不是图片二进制文件，提高访问速度。异步请求导致数据问题，解决方案，异步转同步：async: false,
+                        content="<img src ='"+imgSrc+"' />"
+                        console.log("upload:"+content)
+                    },
+                    error:function(e){
+                            alert("error");
+                            console.log(e)
+                            
+                    }
+                })
+                return !img.hasAttribute('internal-blob');  // blocks the upload of <img> elements with the attribute "internal-blob".
+              },
+            images_upload_handler: function (blobInfo, success, failure) {
+               // var xhr, formData;
+                // alert(1)
+               
+            }
+        });
+        tinymce.init({
+            selector: '#add_back',
+            height: 450,
+            language:'zh_CN',//注意大小写
+            plugins:  [
+            "advlist autolink lists link image charmap print preview hr anchor pagebreak",
+            "searchreplace wordcount visualblocks visualchars code fullscreen",
+            "insertdatetime media nonbreaking save table contextmenu directionality",
+            "emoticons template paste textcolor colorpicker textpattern code"
+            ],
+            toolbar: 'image',
+            paste_data_images: true,
+            paste_preprocess: function(plugin, args) { 
+                //如果是粘贴的图片，以此种特定字符开头的进行url替换
+                if(args.content.startsWith("<img src=\"blob:http://localhost")){
+                    args.content = content  
+                }
+                console.log("past_preprocess:"+args.content)
+                
+            },
+            images_upload_credentials: true,
+            images_reuse_filename: true,
+            image_advtab: true, // IMAGE ADVANCED TAB
+            images_upload_base_path: 'files',
+            images_upload_url: 'doFileUpload.asp',
+            automatic_uploads: true,
+            file_picker_types: 'file, image, media',
+            file_picker_callback: function(callback, value, meta) {
+                // alert(7)
+            },
+            images_dataimg_filter: function(img) {
+
+                //可以在这里把文件上传，使用全局参数保存路径，最后在处理的时候替换img.src实现
+                var base64  = img.src.split(",")[1]
+                var timestamp=new Date().getTime()
+                var imgname = timestamp+'.jpg'
+                
+                $.ajax({
+                    url:"https://gitee.com/api/v5/repos/li521miao/images/contents/"+imgname,
+                    type:"post",
+                    data:'{"access_token":"199bec3847cb284ca03f139970f7b691","content":"'+base64+'","message":"upload for images"}',
+                    dataType: 'json',
+                    processData:false,
+                    async: false,
+                    contentType:"application/json;charset=UTF-8",
+                    success:function(data){
+                        imgSrc = data.content.download_url
+                        
+                        // 3------------------返回图床图片的url地址替换。数据库保存到是图片地址而不是图片二进制文件，提高访问速度。异步请求导致数据问题，解决方案，异步转同步：async: false,
+                        content="<img src ='"+imgSrc+"' />"
+                        console.log("upload:"+content)
+                    },
+                    error:function(e){
+                            alert("error");
+                            console.log(e)
+                            
+                    }
+                })
+                return !img.hasAttribute('internal-blob');  // blocks the upload of <img> elements with the attribute "internal-blob".
+              },
+            images_upload_handler: function (blobInfo, success, failure) {
+               // var xhr, formData;
+                // alert(1)
+               
+            }
+        });
+       
+        document.addEventListener('paste', function (event) {
+            var items = (event.clipboardData || window.clipboardData).items;
+            var file = null;
+            if (items && items.length) {
+                // 搜索剪切板items
+                for (var i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        file = items[i].getAsFile();
+                        break;
+                    }
+                }
+            } else {
+                log.innerHTML = '<span style="color:red;">当前浏览器不支持</span>';
+                return;
+            }
+            if (!file) {
+                log.innerHTML = '<span style="color:red;">粘贴内容非图片</span>';
+                return;
+            }
+            // 此时file就是我们的剪切板中的图片对象
+            // 如果需要预览，可以执行下面代码
+            // $('#add_card #add_back').toggle()
+            var reader = new FileReader()
+            reader.onload = function(event) {
+                console.log(event.target.result)
+                preview.innerHTML = '<img src="' + event.target.result + '" class="upload-image">';
+                edit_img.innerHTML = '<img src="' + event.target.result + '" class="upload-image">';
+                back_card_img.innerHTML = '<img src="' + event.target.result + '" class="upload-image">';
+                $('#card_img_save').val(event.target.result)
+                //用于添加新的base图片 add_card
+                $('#img').val(event.target.result)
+            }
+
+            reader.readAsDataURL(file);
+            // 如果不需要预览，上面这段可以忽略
+        });
         $(".alert-success").toggle()
         function edit_card(){
-         $("#edit_card").toggle()
+         //$("#edit_card").toggle()
+         $("#mymodal").modal()
+         
          
         }
-        /**抽认卡ajax删除*/
+        /**抽认卡ajax删除、删除抽认卡*/
         function delete_card(){
-            var string_code = $("div h2").html()
+
+
+            // ----------------------删除的时候是否进行确认elasticsearch 也已经删除成功？ 不需要 直接给个提示吧
+            // ----------------------如果删除走了下一页逻辑，eid value会重置造成幻读，所以要先删除elastic中的索引
+            if($("#eid").val()!=""){
+                $.ajax({
+                    url:"http://39.106.226.131:9200/users/_doc/"+$("#eid").val(),
+                    type:"DELETE",
+                    data:"",
+                    dataType: 'json',
+                    processData:false,
+                    contentType:"application/json",
+                    success:function(data){
+                            console.log(data)
+                    },
+                    error:function(e){
+                            console.log(e)
+                            alert("error,请联系管理员");
+                    }
+                })
+            }
+
+
+            var string_code = $("#edit_card h2").html()
+            uid = sessionStorage.getItem('uid')
                 // 正则匹配 如果是相同的id号则重复检索
             var regexp2 = /[0-9]+/g 
             var card_id =string_code.match(regexp2)[0]
-
+            // var card_type = $('#active_button_raw .btn-primary')[0].href.match('/\/.*\/(.*)')[1]
+            var card_type = sessionStorage.getItem('card_type')
+            
             $.ajax({
                 url:"{{ url_for('ajax_delete')}}",
                 type:"POST",
-                data:JSON.stringify({'card_id':card_id}),
+                data:JSON.stringify({'card_id':card_id,
+                                     'card_type':card_type,
+                                     'uid':uid
+            }),
                 dataType: 'json',
                 processData:false,
                 contentType:"application/json",
                 success:function(data){
-                        next_card()
+                        if(data.cards_total_number==2){
+                            alert("该类抽认卡不可再删除、编辑、或者标记为熟悉！！！！")
+                        }
+                        else{
+                            next_card()
+                        }
                 },
                 error:function(e){
                         alert("error,请联系管理员");
                 }
             })
+            
 
         }
         function add_card(){
-        
-         $("#add_card").toggle()
-         
+        $("#dialog_add_card").modal()
+        //
+        // $("#add_card").toggle()
+         // 清空操作
+         $('.fieldFront .form-control').val('')
+         //
+         $('#img').val('')
+         if ($('#preview').html()!=""){
+            $('#preview').html('')
+            $('#add_back').toggle()
+         }
         }
         function edit_save_card(){
-
+            if (typeof($('#edit_img img')[0])!='undefined'){
+                $('#card_img_save').val($('#edit_img img')[0].src)
+                $('#edit_back').val("back")
+            }
+            // 编辑抽认卡保存时，替换val区域为tinymce内容区域
+            $('#edit_back').val(tinyMCE.activeEditor.getContent())
+            $('#uid_edit').val(sessionStorage.getItem('uid'))
+            $('#edit_eid').val($('#eid').val())
             ajaxForm()
-            $("#edit_card").toggle()
+           // $("#edit_card").toggle()
 
         }
-        /**修改保存抽认卡**/
+        /**修改保存抽认卡，编辑抽认卡**/
         function ajaxForm(){
             var form= new FormData(document.querySelector("#edit_form"));
-            console.log(form.toString());
+            //添加card_type传输
+            var string_code = $("#edit_card h2").html()
+            // 正则匹配 如果是相同的id号则重复检索
+            var regexp2 = /[0-9]+/g 
+            var card_id =string_code.match(regexp2)[0]
+            // var card_type = $('#active_button_raw .btn-primary')[0].href.match('/\/.*\/(.*)')[1]
+            card_type = sessionStorage.getItem('card_type')
+            // form.append('card_type',card_type)
+            form.append('card_type',card_type)
             $.ajax({
                 url:"{{ url_for('edit_card') }}",
                 type:"post",
@@ -248,96 +801,584 @@
                                 $(".alert-success").toggle()
                             },2000
                         );
+                        if(data.cards_total_number==2){
+                            alert("剩余抽认卡不可再删除、编辑、或者标记为熟悉！！！！")
+                        }
+                        
+                   
                         
                 },
                 error:function(e){
                         alert("error");
                 }
             })
+
+
+            // -------------------------------- 修改的话 eid不会变uid用不到，只是更新操作
+
+            type = form.get('type')
+            front  = form.get('front')
+            back = form.get('back')
+            if(back==null){
+                back = tinyMCE.activeEditor.getContent()
+            }
+            // 添加内容到elasticsearch,加入知识图谱功能,后台检索平台
+            if($('#eid').val()!=""){
+                
+                $.ajax({
+                    url:"http://39.106.226.131:9200/users/_update/"+$('#eid').val(),
+                    type:"post",
+                    data:JSON.stringify({
+                            "doc":{
+                                'type':type,
+                                'front':front,
+                                'back':back,
+                                }
+                          }),
+                    dataType: 'json',
+                    async: false,
+                    processData:false,
+                    contentType:'application/json',
+                    success:function(data){ 
+                            console.log(data)
+                            eid = data._id
+                    },
+                    error:function(e){
+                        
+                            alert("error");
+                            console.log(e)
+                    
+                    }
+                })
+            }
+
+
+
     }
 
      /**新增保存抽认卡**/
      function add_form(){
-
+        $('#add_back').val(tinyMCE.activeEditor.getContent())
+        $('#uid').val(sessionStorage.getItem('uid'))
         add_ajaxForm()
-        $("#add_card").toggle()
+       // $("#add_card").toggle()
+        // 当抽记页面隐藏，添加完就显示该页面
+        if($(".memorizePanel").is(":hidden")){
+            $('.memorizePanel').toggle()
+            $('.col-xs-12.text-center').toggle()
+        }
 
     }
     /**添加新的抽认卡*/
      function add_ajaxForm(){
         var form= new FormData(document.querySelector("#add_form"));
         console.log(form.toString());
+        var card_id = ""
+        // ---------------------------获取eid 
+        
+        var eid = ''
+        uid = sessionStorage.getItem('uid')
+        type = $('.toggleSelected input')[0].value
+        front  = $('.fieldFront .form-control')[0].value
+        var back = tinyMCE.activeEditor.getContent()
+        var createtime = new Date().format("Y-m-d H:i:s")
+        // 添加内容到elasticsearch,加入知识图谱功能,后台检索平台
+        $.ajax({
+            url:"http://39.106.226.131:9200/users/_doc",
+            type:"post",
+            data:JSON.stringify({'uid':uid,
+            'type':type,
+            'front':front,
+            'back':back,
+            'createtime':createtime,
+            }),
+            dataType: 'json',
+            async: false,
+            processData:false,
+            contentType:'application/json',
+            success:function(data){ 
+                    console.log(data)
+                    eid = data._id
+            },
+            error:function(e){
+                
+                    alert("error");
+                    console.log(e)
+                
+            }
+        })
+        console.log("eid="+eid)
+        if(eid==""){
+            alert("eid 为空")
+        }
+        // -----------------eid加入到form中
+        $('#eid').val(eid)
+        // ----------------------添加eid到数据表中
         $.ajax({
             url:"{{ url_for('ajax_add_card') }}",
             type:"post",
             data:form,
+            async: false,
             dataType: 'json',
             processData:false,
             contentType:false,
             success:function(data){
                     $('#edit_card input.form-control').val($('#add_card input.form-control').val())
-                    $('#edit_card textarea.form-control').val($('#add_card textarea.form-control').val())
+                    $('#edit_card textarea.form-control').val()
+                    $('#edit_img textarea').val($('#add_card textarea.form-control').val())
                     $('h3.text-center').html($('#add_card input.form-control').val())
                     $('div pre code').html($('#add_card textarea.form-control').val())
-                   
+                    
                     $(' .largerText').html($('#edit_card textarea.form-control').val())
                     $(".alert-success").toggle()
+                    card_id = data.lastrowid
+                    var flag_message = '编辑抽认卡 #'+card_id
+                    $("#edit_card h2").html(flag_message)
+                    $("#card_id").val(card_id)
+                    //-------------------------------------
+                    textarea = "<textarea name='back' class='form-control' id='edit_back' placeholder='back of card' rows='12'>"+back+" </textarea>"
+                    
+                    $('#back_card_img')[0].innerHTML = back
+                    edit_img.innerHTML = textarea
                     setTimeout(
                         function(){
                             $(".alert-success").toggle()
                         },2000
                     );
-                    
+                    activeTinyMce();
             },
             error:function(e){
                     alert("error");
             }
         })
-    }   
+        //拼接json数据给elasticsearch 不经过中间层了。
+        //--------------------用添加得到的sqlid号，更新es中的sqlid号
+         // 添加内容到elasticsearch,加入知识图谱功能,后台检索平台
+         if($('#eid').val()!=""){
+                
+            $.ajax({
+                url:"http://39.106.226.131:9200/users/_update/"+$('#eid').val(),
+                type:"post",
+                data:JSON.stringify({
+                        "doc":{
+                            'sqlId':card_id,
+                            }
+                      }),
+                dataType: 'json',
+                processData:false,
+                contentType:'application/json',
+                success:function(data){ 
+                        console.log(data)
+                        eid = data._id
+                },
+                error:function(e){
+                    
+                        alert("error");
+                        console.log(e)
+                
+                }
+            })
+        }
 
-    /**下一张抽认卡**/
-    function next_card(){
-        
+
+    }   
+    function activeTinyMce(){
+
+        tinyMCE.remove();
+                    
+        tinymce.init({
+            selector: '#add_back',
+            height: 450,
+            language:'zh_CN',//注意大小写
+            plugins:  [
+            "advlist autolink lists link image charmap print preview hr anchor pagebreak",
+            "searchreplace wordcount visualblocks visualchars code fullscreen",
+            "insertdatetime media nonbreaking save table contextmenu directionality",
+            "emoticons template paste textcolor colorpicker textpattern code"
+            ],
+            toolbar: 'image',
+            paste_data_images: true,
+            paste_preprocess: function(plugin, args) { 
+                //如果是粘贴的图片，以此种特定字符开头的进行url替换
+                if(args.content.startsWith("<img src=\"blob:http://localhost")){
+                    args.content = content  
+                }
+                console.log("past_preprocess:"+args.content)
+                
+            },
+            images_upload_credentials: true,
+            images_reuse_filename: true,
+            image_advtab: true, // IMAGE ADVANCED TAB
+            images_upload_base_path: 'files',
+            images_upload_url: 'doFileUpload.asp',
+            automatic_uploads: true,
+            file_picker_types: 'file, image, media',
+            file_picker_callback: function(callback, value, meta) {
+                // alert(7)
+            },
+            images_dataimg_filter: function(img) {
+
+                //可以在这里把文件上传，使用全局参数保存路径，最后在处理的时候替换img.src实现
+                var base64  = img.src.split(",")[1]
+                var timestamp=new Date().getTime()
+                var imgname = timestamp+'.jpg'
+                
+                $.ajax({
+                    url:"https://gitee.com/api/v5/repos/li521miao/images/contents/"+imgname,
+                    type:"post",
+                    data:'{"access_token":"199bec3847cb284ca03f139970f7b691","content":"'+base64+'","message":"upload for images"}',
+                    dataType: 'json',
+                    processData:false,
+                    async: false,
+                    contentType:"application/json;charset=UTF-8",
+                    success:function(data){
+                        imgSrc = data.content.download_url
+                        
+                        // 3------------------返回图床图片的url地址替换。数据库保存到是图片地址而不是图片二进制文件，提高访问速度。异步请求导致数据问题，解决方案，异步转同步：async: false,
+                        content="<img src ='"+imgSrc+"' />"
+                        console.log("upload:"+content)
+                    },
+                    error:function(e){
+                            alert("error");
+                            console.log(e)
+                            
+                    }
+                })
+                return !img.hasAttribute('internal-blob');  // blocks the upload of <img> elements with the attribute "internal-blob".
+              },
+            images_upload_handler: function (blobInfo, success, failure) {
+               // var xhr, formData;
+                // alert(1)
+               
+            }
+        });
+        // ----------------------------------  渲染到编辑窗口
+        tinymce.init({
+            selector: '#edit_back',
+            height: 450,
+            language:'zh_CN',//注意大小写
+            plugins:  [
+            "advlist autolink lists link image charmap print preview hr anchor pagebreak",
+            "searchreplace wordcount visualblocks visualchars code fullscreen",
+            "insertdatetime media nonbreaking save table contextmenu directionality",
+            "emoticons template paste textcolor colorpicker textpattern code"
+            ],
+            toolbar: 'image',
+            paste_data_images: true,
+            paste_preprocess: function(plugin, args) { 
+                //如果是粘贴的图片，以此种特定字符开头的进行url替换
+                if(args.content.startsWith("<img src=\"blob:http://localhost")){
+                    args.content = content  
+                }
+                console.log("past_preprocess:"+args.content)
+                
+            },
+            images_upload_credentials: true,
+            images_reuse_filename: true,
+            image_advtab: true, // IMAGE ADVANCED TAB
+            images_upload_base_path: 'files',
+            images_upload_url: 'doFileUpload.asp',
+            automatic_uploads: true,
+            file_picker_types: 'file, image, media',
+            file_picker_callback: function(callback, value, meta) {
+                // alert(7)
+            },
+            images_dataimg_filter: function(img) {
+
+                //可以在这里把文件上传，使用全局参数保存路径，最后在处理的时候替换img.src实现
+                var base64  = img.src.split(",")[1]
+                var timestamp=new Date().getTime()
+                var imgname = timestamp+'.jpg'
+                
+                $.ajax({
+                    url:"https://gitee.com/api/v5/repos/li521miao/images/contents/"+imgname,
+                    type:"post",
+                    data:'{"access_token":"199bec3847cb284ca03f139970f7b691","content":"'+base64+'","message":"upload for images"}',
+                    dataType: 'json',
+                    processData:false,
+                    async: false,
+                    contentType:"application/json;charset=UTF-8",
+                    success:function(data){
+                        imgSrc = data.content.download_url
+                        
+                        // 3------------------返回图床图片的url地址替换。数据库保存到是图片地址而不是图片二进制文件，提高访问速度。异步请求导致数据问题，解决方案，异步转同步：async: false,
+                        content="<img src ='"+imgSrc+"' />"
+                        console.log("upload:"+content)
+                    },
+                    error:function(e){
+                            alert("error");
+                            console.log(e)
+                            
+                    }
+                })
+                return !img.hasAttribute('internal-blob');  // blocks the upload of <img> elements with the attribute "internal-blob".
+              },
+            images_upload_handler: function (blobInfo, success, failure) {
+               // var xhr, formData;
+                // alert(1)
+               
+            }
+        });
+        // 需要重新渲染该textarea为tiny
+    }
+    /**下一张 抽认卡、下一页**/
+    function next_card(cardId){
+        uid = sessionStorage.getItem('uid')
+        var eid = ""
+        var card_id = ""
+        if(cardId != undefined){
+            card_id = cardId
+        }
+        var data_es = {card:{id:"",front:"",back:"",uid:""}}
         $.ajax({
-            url:"{{ url_for(card_type) }}",
-            type:"get",
-            data:'',
+            url:"http://localhost:8088/"+sessionStorage.getItem('card_type'),
+            type:"POST",
+            data:JSON.stringify({'uid':uid,'card_id':card_id}),
             dataType: 'json',
             processData:false,
-            contentType:false,
+            async:false,
+            contentType:'application/json',
+            // ----------------------------根据类型随机检索
             success:function(data){
-                var string_code = $("div h2").html()
+                var string_code = $("#edit_card h2").html()
                 // 正则匹配 如果是相同的id号则重复检索
                 var regexp2 = /[0-9]+/g 
-                if(data.card.id==string_code.match(regexp2)[0]){
+                if (data.card=="None"){
+                                        // 当前div隐藏，显示添加div框 ,适用于，第一次进入没数据，删除没数据，下一页没数据（编辑，mark都解决）
+                    $('.memorizePanel').toggle()
+                    $('.col-xs-12.text-center').toggle()
+                    $("#add_card").toggle()
+                    return;
+                }
+                if(data.card.id==string_code.match(regexp2)[0]&&data.cards_total_number>1){
                     next_card()
                 }else{
-                    console.log(data)
-                    $('h3.text-center').html(data.card.front)
-                    $('#edit_card input.form-control ').val(data.card.front)
-                    $('#edit_card textarea.form-control').val(data.card.back)
-                    $("div pre code").html(data.card.back)
-                    $("#edit_card h2").html("编辑抽认卡 #"+data.card.id)
-                    $(".largerText").html(data.card.back) // todo 暂时解决
-                    $(".cardBack .frontText").html(data.card.back) // todo 暂时解决
-                    $('#card_id').val(data.card.id)
+                    //-----------------------如果eid不存在的话，进入ela创建流程，然后更新mysql数据
+                    
+                    data_es.card.uid = uid
+                    //点击下一页，如果是图片添加图片输出展示
+                    if(data.card.back.indexOf("data:image/png;base64") == 0){
+                        $('#eid').val(data.card.eid)
+                        $('h3.text-center').html(data.card.front)
+                        $('#edit_card input.form-control ').val(data.card.front)
+                        $("#edit_card h2").html("编辑抽认卡 #"+data.card.id)
+                        $('#card_id').val(data.card.id)
+                        card_img = '<img src="' + data.card.back + '" class="upload-image">'
+                        back_card_img.innerHTML = card_img
+                        textarea = "<textarea name='back' class='form-control' id='edit_back' placeholder='back of card' rows='12'>"+card_img+" </textarea>"
+                        edit_img.innerHTML = textarea
+                        // edit_back.innerHTML  = card_img
+                        //
+                        data_es = data
+                        eid = data.card.eid
+                        
+                    }else{
+                        
+                        $('#eid').val(data.card.eid)
+                        $('h3.text-center').html(data.card.front)
+                        $('#edit_card input.form-control ').val(data.card.front)
+                        $('#edit_card textarea.form-control').val(data.card.back)
+                        $("div pre code").html(data.card.back)
+                        $("#edit_card h2").html("编辑抽认卡 #"+data.card.id)
+                        $(".largerText").html(data.card.back) // todo 暂时解决
+                        $(".cardBack .frontText").html(data.card.back) // todo 暂时解决
+                        $('#card_id').val(data.card.id)
+                         //
+                        data_es = data
+                        //
+                        eid = data.card.eid
+                        //点击下一页如果是文字则返回文本textarea标签
+                        textarea = "<textarea name='back' class='form-control' id='edit_back' placeholder='back of card' rows='12'>"+data.card.back+" </textarea>"
+                        edit_img.innerHTML = textarea
+                        //edit_back.innerHTML  = data.card.back
+
+                    }
+                        // 需要重新渲染该textarea为tiny
+                        tinyMCE.remove();
+                    
+                        tinymce.init({
+                            selector: '#add_back',
+                            height: 450,
+                            language:'zh_CN',//注意大小写
+                            plugins:  [
+                            "advlist autolink lists link image charmap print preview hr anchor pagebreak",
+                            "searchreplace wordcount visualblocks visualchars code fullscreen",
+                            "insertdatetime media nonbreaking save table contextmenu directionality",
+                            "emoticons template paste textcolor colorpicker textpattern code"
+                            ],
+                            toolbar: 'image',
+                            paste_data_images: true,
+                            paste_preprocess: function(plugin, args) { 
+                                //如果是粘贴的图片，以此种特定字符开头的进行url替换
+                                if(args.content.startsWith("<img src=\"blob:http://localhost")){
+                                    args.content = content  
+                                }
+                                console.log("past_preprocess:"+args.content)
+                                
+                            },
+                            images_upload_credentials: true,
+                            images_reuse_filename: true,
+                            image_advtab: true, // IMAGE ADVANCED TAB
+                            images_upload_base_path: 'files',
+                            images_upload_url: 'doFileUpload.asp',
+                            automatic_uploads: true,
+                            file_picker_types: 'file, image, media',
+                            file_picker_callback: function(callback, value, meta) {
+                                // alert(7)
+                            },
+                            images_dataimg_filter: function(img) {
+                
+                                //可以在这里把文件上传，使用全局参数保存路径，最后在处理的时候替换img.src实现
+                                var base64  = img.src.split(",")[1]
+                                var timestamp=new Date().getTime()
+                                var imgname = timestamp+'.jpg'
+                                
+                                $.ajax({
+                                    url:"https://gitee.com/api/v5/repos/li521miao/images/contents/"+imgname,
+                                    type:"post",
+                                    data:'{"access_token":"199bec3847cb284ca03f139970f7b691","content":"'+base64+'","message":"upload for images"}',
+                                    dataType: 'json',
+                                    processData:false,
+                                    async: false,
+                                    contentType:"application/json;charset=UTF-8",
+                                    success:function(data){
+                                        imgSrc = data.content.download_url
+                                        
+                                        // 3------------------返回图床图片的url地址替换。数据库保存到是图片地址而不是图片二进制文件，提高访问速度。异步请求导致数据问题，解决方案，异步转同步：async: false,
+                                        content="<img src ='"+imgSrc+"' />"
+                                        console.log("upload:"+content)
+                                    },
+                                    error:function(e){
+                                            alert("error");
+                                            console.log(e)
+                                            
+                                    }
+                                })
+                                return !img.hasAttribute('internal-blob');  // blocks the upload of <img> elements with the attribute "internal-blob".
+                              },
+                            images_upload_handler: function (blobInfo, success, failure) {
+                               // var xhr, formData;
+                                // alert(1)
+                               
+                            }
+                        });
+                        // ----------------------------------  渲染到编辑窗口
+                        tinymce.init({
+                            selector: '#edit_back',
+                            height: 450,
+                            language:'zh_CN',//注意大小写
+                            plugins:  [
+                            "advlist autolink lists link image charmap print preview hr anchor pagebreak",
+                            "searchreplace wordcount visualblocks visualchars code fullscreen",
+                            "insertdatetime media nonbreaking save table contextmenu directionality",
+                            "emoticons template paste textcolor colorpicker textpattern code"
+                            ],
+                            toolbar: 'image',
+                            paste_data_images: true,
+                            paste_preprocess: function(plugin, args) { 
+                                //如果是粘贴的图片，以此种特定字符开头的进行url替换
+                                if(args.content.startsWith("<img src=\"blob:http://localhost")){
+                                    args.content = content  
+                                }
+                                console.log("past_preprocess:"+args.content)
+                                
+                            },
+                            images_upload_credentials: true,
+                            images_reuse_filename: true,
+                            image_advtab: true, // IMAGE ADVANCED TAB
+                            images_upload_base_path: 'files',
+                            images_upload_url: 'doFileUpload.asp',
+                            automatic_uploads: true,
+                            file_picker_types: 'file, image, media',
+                            file_picker_callback: function(callback, value, meta) {
+                                // alert(7)
+                            },
+                            images_dataimg_filter: function(img) {
+                
+                                //可以在这里把文件上传，使用全局参数保存路径，最后在处理的时候替换img.src实现
+                                var base64  = img.src.split(",")[1]
+                                var timestamp=new Date().getTime()
+                                var imgname = timestamp+'.jpg'
+                                
+                                $.ajax({
+                                    url:"https://gitee.com/api/v5/repos/li521miao/images/contents/"+imgname,
+                                    type:"post",
+                                    data:'{"access_token":"199bec3847cb284ca03f139970f7b691","content":"'+base64+'","message":"upload for images"}',
+                                    dataType: 'json',
+                                    processData:false,
+                                    async: false,
+                                    contentType:"application/json;charset=UTF-8",
+                                    success:function(data){
+                                        imgSrc = data.content.download_url
+                                        
+                                        // 3------------------返回图床图片的url地址替换。数据库保存到是图片地址而不是图片二进制文件，提高访问速度。异步请求导致数据问题，解决方案，异步转同步：async: false,
+                                        content="<img src ='"+imgSrc+"' />"
+                                        console.log("upload:"+content)
+                                    },
+                                    error:function(e){
+                                            alert("error");
+                                            console.log(e)
+                                            
+                                    }
+                                })
+                                return !img.hasAttribute('internal-blob');  // blocks the upload of <img> elements with the attribute "internal-blob".
+                              },
+                            images_upload_handler: function (blobInfo, success, failure) {
+                               // var xhr, formData;
+                                // alert(1)
+                               
+                            }
+                        });
+                        // 需要重新渲染该textarea为tiny
+                        
+
+                    
                 }
+                
                
             },
             error:function(e){
                     alert("error");
             }
         })
+      
+        // --------------去除
+
+       // 加入检索功能,智能推荐、需要减少检索词
+       search_val  = data_es.card.front
+       // --------控制从list列表进入的不进行随机查询
+       // ========正则表达式，截取冒号前的字符作为检索标识。
+       var reg = /.*(：|:)/g
+       if(card_id==""){
+           if(search_val.match(reg)!=null){
+               search_val = search_val.match(reg)[0].substr(0,search_val.match(reg)[0].length-1)
+               search(search_val)
+           }
+    }
+
     }
     /**标记认识这张抽认卡*/
     function mark_know(){
+
+        var string_code = $("#edit_card h2").html()
+                // 正则匹配 如果是相同的id号则重复检索
+        var regexp2 = /[0-9]+/g 
+        var card_id =string_code.match(regexp2)[0]
+       // 正则匹配 如果是相同的id号则重复检索
+        // var card_type = $('#active_button_raw .btn-primary')[0].href.match('/\/.*\/(.*)')[1]
+        card_type = sessionStorage.getItem('card_type')
+
+
         $.ajax({
-            url:"{{ url_for('ajax_mark_known',card_id=card.id,card_type=card_type)}}",
-            type:"get",
-            data:'',
+            url:"{{ url_for('ajax_mark_known')}}",
+            type:"post",
+            data:JSON.stringify({'card_id':card_id,
+                                  'card_type':card_type,
+                                  'uid':sessionStorage.getItem('uid')
+                                }),
             dataType: 'json',
             processData:false,
-            contentType:false,
+            contentType:'application/json',
             success:function(data){
                 $(".alert-success").toggle()
                 setTimeout(
@@ -345,6 +1386,9 @@
                         $(".alert-success").toggle()
                     },2000
                 );
+                if(data.cards_total_number==2){
+                    alert("该类抽认卡不能再删除、编辑、或者标记为熟悉!!!!!")
+                }
             },
             error:function(e){
                     alert("error,请联系管理员");
@@ -352,6 +1396,73 @@
         })
 
     }
+// 搜索、检索、查询
+    function search(search_param){
+        
+        if(search_param==""||search_param==null||search_param==undefined){
+            search_val = $('.searchCard input').val()
+        }else{
+            search_val = search_param
+        }
+        
+        $.ajax({
+            url:"http://39.106.226.131:9200/users/_search",
+            type:"POST",
+            data:JSON.stringify({
+                    "query": {
+                        "match_phrase": {
+                            "front":search_val
+                        }
+                },
+                "sort": [{
+                    "createtime.keyword": {
+                        "order": "desc"
+                    }
+                },{
+                    "_score": {
+                        "order": "desc"
+                    }
+                }],
+                "size": 40,
+                "from": 0
+            }),
+            dataType: 'json',
+            processData:false,
+            contentType:"application/json",
+            success:function(data){
+                    console.log(data)
+                    // 得到数据总数
+                  //  data.hits.hits.length
+                    // 渲染div数据
+                  //  data.hits.hits[0]._source.front
+                  //  data.hits.hits[0]._source.back
+                    //元素清空
+                    $(".searchContext").empty()
+                    var u = $(".searchContext").append("<ul>");//外层循环添加ul到div内，且赋予了一个变量
+                    for(var i=0 ;i<data.hits.hits.length;i++){
+                               
+                     //   u.append('<div class=".divli" style="margin: 0 auto;"><li onclick="next_card('+data.hits.hits[i]._source.sqlId+')">'+data.hits.hits[i]._source.front+'<hr><div class="hiddenli" >'+data.hits.hits[i]._source.back+'<div></li></div>');//内层循环追加li
+                        u.append('<div class=".divli" style="margin: 0 auto;"><li onclick="next_card('+data.hits.hits[i]._source.sqlId+')">'+data.hits.hits[i]._source.front+'</li></div>');//内层循环追加li
+                       
+                    }
+                        $(".searchContext").append("</ul>");        //外层循环添加ul结束标志到div内
+            },
+            error:function(e){
+                    console.log(e)
+                    alert("error,请联系管理员");
+            }
+        })
+    }
+
+
+
+
+
+
+
+
+
+    
     
     </script>
     <style>
@@ -372,5 +1483,61 @@
         #link_delete_card {
             top:52px;
         }
+        .input-group-append {
+    
+            float: right;
+            position: absolute;
+            top: 0px;
+            right: 0px;
+            z-index: 3;
+            
+        }
+        .input-group {
+           width: 30%;
+            margin: 0 auto;
+        }
+        
+        .searchContext {
+            width:500px;
+         
+            margin: 0 auto;
+            margin-top: 10px;
+            
+        }
+        
+        .searchContext div{
+         
+           
+            
+        }
+        .searchContext hr {
+            border: solid
+        }
+        
+        .\.divli li:hover {
+            cursor: pointer;
+        }
+        .\.divli li:hover .hiddenli {
+           display: block;
+           background-color: white;
+            
+        }
+        
+        .hiddenli {
+            display: none ;
+            position: relative;
+            left: 0px;
+           
+           
+        }
+        .\.divli {
+            position: relative;
+        }
+        .searchContext {
+            position: absolute;
+            top: 90px;
+            right: -300px;
+        }
+        
     </style>
 {% endblock %}
