@@ -109,12 +109,13 @@ def redis_get():
 def redis_label():
     
     db = get_db()
+    # 修改为只要大于一个的label就显示出来
     query = '''
-        select count(*) as count,substr(cd.front,0,instr(cd.front,'：')) as keyword from cards cd group by substr(cd.front,0,instr(cd.front,'：'))
-        HAVING count(*) > 2 and count(*) < 100 and cd.uid = ?
+        select count(1) as count,substr(cd.front,0,instr(cd.front,'：')) as keyword from cards cd group by substr(cd.front,0,instr(cd.front,'：'))
+        HAVING count(1) > 0 and cd.uid = ?
         UNION
-        select count(*) as count, substr(cd.front,0,instr(cd.front,':')) as keyword from cards cd group by substr(cd.front,0,instr(cd.front,':'))
-        HAVING count(*) > 2 and count(*) < 100 and cd.uid = ?
+        select count(1) as count, substr(cd.front,0,instr(cd.front,':')) as keyword from cards cd group by substr(cd.front,0,instr(cd.front,':'))
+        HAVING count(1) > 0 and cd.uid = ?
     '''
     cur = db.execute(query,[request.form['uid'],request.form['uid']])
     cards = cur.fetchall()
